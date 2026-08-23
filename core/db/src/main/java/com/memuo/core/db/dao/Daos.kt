@@ -19,6 +19,14 @@ interface NoteDao {                                        // 笔记数据访问
     @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY pinned DESC, updatedAt DESC")  // SQL：过滤软删除 + 排序
     fun observeActive(): Flow<List<Note>>                  // 返回 Flow：数据变化时自动推送（响应式）
 
+    /** 观察单条笔记（编辑页实时加载用）。 */
+    @Query("SELECT * FROM notes WHERE id = :id")           // SQL：按 ID 查单条
+    fun observeById(id: Long): Flow<Note?>                 // 返回可空 Flow（删除后自动变 null）
+
+    /** 按 ID 取单条笔记（一次性读取）。 */
+    @Query("SELECT * FROM notes WHERE id = :id")           // SQL：按 ID 查单条
+    suspend fun getById(id: Long): Note?                   // 挂起函数：一次性返回
+
     /** 插入或更新一条笔记（冲突时替换）。 */
     @Insert(onConflict = OnConflictStrategy.REPLACE)       // 插入，主键冲突则替换
     suspend fun upsert(note: Note): Long                   // 挂起函数：返回插入后的行 ID

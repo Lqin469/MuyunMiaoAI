@@ -39,6 +39,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }                # Hilt 运行时
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }              # Hilt 注解处理器（kapt）
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.2.0" } # Hilt + Compose 导航（hiltViewModel()）
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }                    # Room 运行时
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }                            # Room 协程扩展
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }                  # Room 注解处理器（kapt）

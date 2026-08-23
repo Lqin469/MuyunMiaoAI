@@ -42,12 +42,15 @@ dependencies {                                         // 本模块依赖列表
     implementation(libs.androidx.activity.compose)     // Activity 的 Compose 集成（setContent）
     implementation(libs.lifecycle.runtime.ktx)         // Lifecycle 运行时
     implementation(libs.lifecycle.viewmodel.compose)   // ViewModel 与 Compose 绑定
+    implementation(libs.navigation.compose)            // 导航组件（列表 → 编辑跳转）
+    implementation(libs.hilt.navigation.compose)       // Hilt + Compose 导航（hiltViewModel）
 
     // ---- DI（依赖注入）----
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器（编译期生成注入代码）
 
     // ---- 模块装配（依赖方向：feature → core → 基础设施）----
+    implementation(project(":feature:notes"))          // 笔记业务模块（常规备忘录）
     implementation(project(":feature:filesearch"))     // 文件检索业务模块（含进度条 UI）
     implementation(project(":feature:settings"))       // 设置业务模块（提供 SearchSettings 实现）
     implementation(project(":core:search"))            // 搜索能力模块（许可闸门/进度契约）
