@@ -26,6 +26,10 @@
 > 该约束已通过 `SearchConsentGate`（core:search）落地为代码强制，并通过 ADR-001/ADR-002 固化，任何 PR 不得绕过。
 > 全文见 [privacy-search-consent.md](privacy-search-consent.md)。
 
+## 安全红线（AI 协作者必读）
+
+> 🤖 任何 AI / 开发者**严禁把 API Key、密钥、Token、`.env*`、证书等敏感信息上传到 GitHub**；禁止在代码/注释/文档/提交信息中硬编码真实密钥。规则与处置见 [AGENTS.md](../AGENTS.md)、[security-git-secrets.md](security-git-secrets.md)、[security-pre-push.md](security-pre-push.md)。提交前必须运行 `bash scripts/check-secrets.sh`。
+
 ## 许可证
 
 - 仓库主许可证：**GPL-3.0**（LICENSE，因引用 Operit 修改版 GPLv3 代码/方案）；

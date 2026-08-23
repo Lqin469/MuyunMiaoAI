@@ -2,6 +2,8 @@
 
 欢迎参与 MuyunMiaoAI（沐云杪AI）开发。本仓库采用**文档驱动开发**（R12）：文档与代码同等重要，缺失文档的改动不会被合并。
 
+> 🤖 **AI 协作者（Claude / GPT / 其他 Agent）请先阅读 [AGENTS.md](AGENTS.md)** —— 那里有面向 AI 的强制红线，其中**第一条就是「严禁把 API Key、密钥、.env 等敏感信息上传到 GitHub」**。
+
 ## 快速上手
 
 1. 阅读 [docs/00-overview.md](docs/00-overview.md)（总纲）与 [docs/03-contracts.md](docs/03-contracts.md)（接口契约）；
@@ -27,7 +29,8 @@
 
 ### 敏感信息（推送 GitHub 前）
 
-- **禁止**把 `.env`、密钥/证书（`*.key/*.pem/*.jks/*.keystore` 等）、`local.properties`、日志、堆转储提交入库；
+- **任何 AI / 开发者严禁把密钥与凭据上传到 GitHub**：API Key、Token、`.env*`、私钥/证书（`*.key/*.pem/*.jks/*.keystore` 等）、`local.properties`、日志、堆转储一律禁止提交；
+- **禁止在代码、注释、文档、提交信息、PR 描述中硬编码真实密钥**；需要时用占位符（`YOUR_API_KEY`），真实值只存本机；
 - 推送前必须运行 `bash scripts/check-secrets.sh`（或安装钩子：`git config core.hooksPath scripts/hooks`）；
 - 若误提交，按 [docs/security-git-secrets.md](docs/security-git-secrets.md) 处理（git rm --cached + 历史重写 + **密钥轮换**）；
 - 自查全流程见 [docs/security-pre-push.md](docs/security-pre-push.md)。

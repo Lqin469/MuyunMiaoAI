@@ -17,6 +17,12 @@
 - [ ] 所有搜索/索引进度均通过 `SearchProgressListener` 实时上报并可见
 - [ ] 相关日志已写入 `consent_audit` 审计（或注明后续落库）
 
+## 敏感信息检查（AI 协作者强制）
+
+- [ ] 本 PR **未包含**任何 API Key / Token / `.env*` / 私钥证书（`*.key/*.pem/*.jks/*.keystore`）/ `local.properties` / 日志 / 堆转储
+- [ ] 代码、注释、文档、提交信息、PR 描述中**无硬编码真实密钥**（需要时用占位符 `YOUR_API_KEY`）
+- [ ] 已运行 `bash scripts/check-secrets.sh` 且通过
+
 ## 关联
 
 - Closes #（Issue 编号）

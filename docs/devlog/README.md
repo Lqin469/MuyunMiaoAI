@@ -38,4 +38,5 @@
 1. 功能完成当回合提交 devlog，随 PR 一起合并；
 2. 接口变更必须先写 ADR（docs/adl/）再改代码；
 3. 提交信息引用：`feat(notes): 说明 #R7 docs:M-002`；
-4. 数据表变更同步 docs/04-database.md；接口变更同步 docs/03-contracts.md。
+4. 数据表变更同步 docs/04-database.md；接口变更同步 docs/03-contracts.md；
+5. **AI 协作者红线（最高优先级）**：严禁把 API Key、密钥、`.env*`、证书等敏感信息提交到 GitHub；禁止在代码/注释/文档/提交信息中硬编码真实密钥；提交前运行 `bash scripts/check-secrets.sh`。详见根目录 `AGENTS.md`。

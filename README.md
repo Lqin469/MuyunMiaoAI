@@ -54,6 +54,8 @@ gradle :app:assembleDebug :app:lintDebug
 
 ## 安全规范（推送 GitHub 前必读）
 
+> 🤖 **AI 协作者先读 [AGENTS.md](AGENTS.md)** —— 第一条红线就是「严禁把 API Key、密钥、`.env` 等敏感信息上传到 GitHub」。
+
 - [docs/security-git-secrets.md](docs/security-git-secrets.md) — 检查并清除误提交的密钥（git rm --cached / filter-branch / BFG / filter-repo）
 - [docs/security-pre-push.md](docs/security-pre-push.md) — 推送前自查流程（10 步清单）
 - 根目录 `.gitignore` — 已覆盖环境变量/密钥/证书/构建产物/日志/模型文件，每项带中文注释
@@ -87,6 +89,7 @@ PROMPT.md                   # 项目初始化与安全规范整合提示词
 
 ## 文档
 
+- [AGENTS.md](AGENTS.md) — **AI 协作者强制红线（严禁上传密钥等）**
 - [docs/00-overview.md](docs/00-overview.md) — 项目总纲与需求索引
 - [docs/01-architecture.md](docs/01-architecture.md) — 架构与模块边界
 - [docs/03-contracts.md](docs/03-contracts.md) — 接口契约（单一事实源）
