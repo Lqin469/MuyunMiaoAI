@@ -2,6 +2,7 @@ package com.memuo.core.db                               // 声明包名：数据
 
 import androidx.room.Database                             // 导入 Database：Room 数据库注解
 import androidx.room.RoomDatabase                         // 导入 RoomDatabase：数据库基类
+import com.memuo.core.db.dao.ChatDao                      // 导入会话 DAO
 import com.memuo.core.db.dao.ConsentAuditDao              // 导入审计 DAO
 import com.memuo.core.db.dao.NoteDao                      // 导入笔记 DAO
 import com.memuo.core.db.entity.ChatMessage               // 导入消息实体
@@ -30,6 +31,9 @@ abstract class AppDatabase : RoomDatabase() {             // 抽象数据库类�
 
     /** 提供笔记 DAO。 */
     abstract fun noteDao(): NoteDao                       // 笔记数据访问对象
+
+    /** 提供会话/消息 DAO。 */
+    abstract fun chatDao(): ChatDao                       // 会话数据访问对象
 
     /** 提供审计 DAO。 */
     abstract fun consentAuditDao(): ConsentAuditDao       // 审计数据访问对象

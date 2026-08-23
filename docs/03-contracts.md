@@ -110,15 +110,25 @@ object StorageMigrator { fun migrate(from: File, to: File): Int }     // 复制 
 ```kotlin
 @Database(entities=[Note,TodoItem,Conversation,ChatMessage,ConsentAuditEntity], version=1)
 abstract class AppDatabase : RoomDatabase()          // 路径走 StorageProvider.dbDir()/muyunmiao.db
-interface NoteDao          // observeActive / upsert / softDelete / observeTodos / upsertTodo
+interface NoteDao          // observeActive / observeById / upsert / softDelete / observeTodos / upsertTodo
+interface ChatDao          // observeConversations / upsertConversation / observeMessages / insertMessage / touch
 interface ConsentAuditDao  // insert / recent（consent_audit 落库）
+```
+
+## 对话引擎契约（core:ai:engine · M3 已定）
+
+```kotlin
+sealed interface ChatEvent { data class Delta(text: String): ChatEvent; data class Done(reason: String): ChatEvent }
+interface ChatEngine { val type: EngineType; fun streamChat(messages, system?): Flow<ChatEvent> }
+data class CloudConfig(baseUrl, apiKey, model)
+interface CloudConfigProvider { suspend fun current(): CloudConfig? }   // 由 feature:settings 实现
+class CloudChatEngine : ChatEngine    // OpenAI 兼容 SSE（本地 MNN 引擎 M6 补）
 ```
 
 ## 预留接口（后续阶段补录）
 
 | 接口 | 归属 | 阶段 |
 |---|---|---|
-| `ChatEngine` / `ChatEvent` | core:ai:engine | M3/M6 |
 | `EmbeddingProvider` | core:ai:embed | M4 |
 | `PrivilegeManager` | core:search | M7 |
 | `ToolCallingBus` / `AiTool` | core:ai:tools | M7 |

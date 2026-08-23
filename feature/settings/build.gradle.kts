@@ -27,6 +27,7 @@ android {                                              // Android 构建配置�
 
 dependencies {                                         // 本模块依赖列表
     implementation(project(":core:search"))            // 依赖搜索模块（实现其 SearchSettings 接口）
+    implementation(project(":core:ai:engine"))         // 依赖引擎模块（实现 CloudConfigProvider 接口）
 
     implementation(libs.datastore.preferences)         // DataStore 偏好存储（持久化设置）
 

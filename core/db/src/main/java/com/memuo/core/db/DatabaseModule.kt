@@ -2,6 +2,7 @@ package com.memuo.core.db                               // 声明包名：数据
 
 import android.content.Context                            // 导入 Context：构建 Room 需要
 import androidx.room.Room                                 // 导入 Room：数据库构建器入口
+import com.memuo.core.db.dao.ChatDao                      // 导入会话 DAO
 import com.memuo.core.db.dao.ConsentAuditDao              // 导入审计 DAO
 import com.memuo.core.db.dao.NoteDao                      // 导入笔记 DAO
 import com.memuo.core.storage.StorageProvider             // 导入存储提供者（决定数据库文件路径）
@@ -38,6 +39,10 @@ object DatabaseModule {                                    // 单例对象：提
     /** 提供 NoteDao（依赖已构建的数据库）。 */
     @Provides                                              // 标记为提供依赖
     fun provideNoteDao(db: AppDatabase): NoteDao = db.noteDao()  // 从数据库取 DAO
+
+    /** 提供 ChatDao。 */
+    @Provides                                              // 标记为提供依赖
+    fun provideChatDao(db: AppDatabase): ChatDao = db.chatDao()  // 从数据库取会话 DAO
 
     /** 提供 ConsentAuditDao。 */
     @Provides                                              // 标记为提供依赖

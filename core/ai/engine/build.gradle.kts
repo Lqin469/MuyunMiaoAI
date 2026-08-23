@@ -1,19 +1,37 @@
-plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+// ============================================================
+// core/ai/engine/build.gradle.kts — AI 引擎模块构建配置
+// 作用：声明引擎模块的构建参数与依赖；承载 ChatEngine 双轨（本地 MNN / 云端 API）
+// ============================================================
+
+plugins {                                              // 本模块启用的插件
+    alias(libs.plugins.android.library)                // Android 库插件（产出 AAR）
+    alias(libs.plugins.kotlin.android)                 // Kotlin 支持
+    alias(libs.plugins.kapt)                           // kapt 注解处理器（Hilt 需要）
+    alias(libs.plugins.hilt)                           // Hilt 依赖注入插件
 }
 
-android {
-    namespace = "com.memuo.core.ai.engine"
-    compileSdk = 36
-    defaultConfig {
-        minSdk = 26
+android {                                              // Android 构建配置块
+    namespace = "com.memuo.core.ai.engine"             // 包名空间
+    compileSdk = 36                                    // 编译 SDK 版本
+    defaultConfig {                                    // 默认配置
+        minSdk = 26                                    // 最低支持 Android 8.0
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+    compileOptions {                                   // Java 字节码版本
+        sourceCompatibility = JavaVersion.VERSION_17   // 源码兼容 Java 17
+        targetCompatibility = JavaVersion.VERSION_17   // 目标字节码 Java 17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlinOptions {                                    // Kotlin 编译选项
+        jvmTarget = "17"                               // 编译为 Java 17 字节码
     }
+}
+
+dependencies {                                         // 本模块依赖列表
+    implementation(project(":core:db"))                // 依赖数据库模块（ChatMessage/EngineType 实体）
+
+    implementation(libs.okhttp)                        // OkHttp（云端 SSE 流式请求）
+
+    implementation(libs.hilt.android)                  // Hilt 运行时
+    kapt(libs.hilt.compiler)                           // Hilt 注解处理器
+
+    implementation(libs.kotlinx.coroutines.android)    // 协程（Flow/callbackFlow）
 }

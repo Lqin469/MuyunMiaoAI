@@ -51,9 +51,11 @@ dependencies {                                         // 本模块依赖列表
 
     // ---- 模块装配（依赖方向：feature → core → 基础设施）----
     implementation(project(":feature:notes"))          // 笔记业务模块（常规备忘录）
+    implementation(project(":feature:chat"))           // 对话业务模块（AI 对话）
     implementation(project(":feature:filesearch"))     // 文件检索业务模块（含进度条 UI）
     implementation(project(":feature:settings"))       // 设置业务模块（提供 SearchSettings 实现）
     implementation(project(":core:search"))            // 搜索能力模块（许可闸门/进度契约）
+    implementation(project(":core:ai:engine"))         // AI 引擎模块（ChatEngine/SSE）
     implementation(project(":core:db"))                // 数据库模块（Room 全库）
     implementation(project(":core:storage"))           // 存储抽象模块（StorageProvider）
 }
