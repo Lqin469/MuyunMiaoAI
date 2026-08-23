@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================
+     AndroidManifest.xml — 应用清单文件
+     作用：向系统声明应用需要的权限、组件（Activity 等）与基本信息
+     ============================================================ -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 声明联网权限：云端 AI API 与模型下载需要网络 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 知识库/文件读取走 SAF（无需存储权限）；全盘检索需 Shizuku(root/adb) 或
+         MANAGE_EXTERNAL_STORAGE，待 M7 阶段按能力等级再声明 -->
+
+    <application
+        android:name=".MemoApp"                          <!-- 应用类：Hilt 依赖注入的入口（Application） -->
+        android:allowBackup="true"                       <!-- 允许系统备份应用数据 -->
+        android:label="@string/app_name"                 <!-- 应用显示名称（取资源文件） -->
+        android:supportsRtl="true"                       <!-- 支持从右到左布局（阿拉伯语等） -->
+        android:theme="@android:style/Theme.Material.Light.NoActionBar"> <!-- 系统主题：无 ActionBar，配合 Compose -->
+
+        <activity
+            android:name=".MainActivity"                 <!-- 注册主 Activity（应用唯一入口界面） -->
+            android:exported="true">                     <!-- 允许被系统/其他应用启动（必须声明，否则无法启动） -->
+            <intent-filter>                              <!-- 意图过滤器：声明本 Activity 能响应什么启动意图 -->
+                <action android:name="android.intent.action.MAIN" />    <!-- 主入口动作 -->
+                <category android:name="android.intent.category.LAUNCHER" /> <!-- 桌面启动器类别（显示应用图标） -->
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

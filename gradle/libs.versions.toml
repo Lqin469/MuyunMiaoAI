@@ -1,0 +1,63 @@
+# ============================================================
+# libs.versions.toml — Gradle 版本目录（依赖集中管理）
+# 作用：所有依赖的"版本号 + 坐标"统一放这里，各模块用别名引用
+# 好处：升级依赖只改一处，全工程同步生效
+# ============================================================
+
+[versions]                                              # 版本号区：定义每个库的版本，供下方引用
+agp = "8.9.2"                                           # Android Gradle 插件版本（决定构建工具链）
+kotlin = "2.1.20"                                       # Kotlin 编译器版本
+composeBom = "2026.05.00"                               # Compose BOM（一批 Compose 库的统一版本清单）
+coreKtx = "1.16.0"                                      # AndroidX Core KTX（Kotlin 扩展）
+activityCompose = "1.10.1"                              # Activity 的 Compose 集成
+lifecycle = "2.9.0"                                     # Lifecycle（ViewModel/状态）
+navigationCompose = "2.9.0"                             # 导航组件（Compose 版）
+hilt = "2.56.2"                                         # Hilt 依赖注入
+room = "2.7.2"                                          # Room 数据库
+datastore = "1.1.7"                                     # DataStore 偏好存储
+okhttp = "5.1.0"                                        # OkHttp 网络库（SSE/下载）
+work = "2.10.1"                                         # WorkManager 后台任务
+coroutines = "1.10.2"                                   # Kotlin 协程
+pdfboxAndroid = "2.0.27.0"                              # PDF 解析库（Android 版）
+commonsCompress = "1.27.1"                              # 压缩包解析（ZIP/TAR/7z）
+junrar = "7.5.5"                                        # RAR4 解压
+shizuku = "13.1.5"                                      # Shizuku（adb/root 提权）
+libsu = "5.2.2"                                         # libsu（root shell）
+securityCrypto = "1.1.0"                                # 安全加密存储（API Key）
+
+[libraries]                                             # 依赖坐标区：库别名 → 坐标
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }              # AndroidX 核心库
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }  # Activity+Compose 桥
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }            # Compose 版本清单（BOM）
+compose-ui = { group = "androidx.compose.ui", name = "ui" }                                                # Compose UI 基础
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }                           # Material3 组件库
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }                # 预览支持（AS 预览面板）
+navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }  # 导航
+lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }      # Lifecycle 运行时
+lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }  # ViewModel+Compose
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }  # 协程 Android 版
+
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }                # Hilt 运行时
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }              # Hilt 注解处理器（kapt）
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }                    # Room 运行时
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }                            # Room 协程扩展
+datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }  # DataStore 偏好存储
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }                       # OkHttp（云端 API/模型下载）
+work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }            # WorkManager
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" } # 加密存储
+
+pdfbox-android = { group = "org.apache.pdfbox", name = "pdfbox-android", version.ref = "pdfboxAndroid" }   # PDF 解析
+commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }  # 压缩包
+junrar = { group = "com.github.junrar", name = "junrar", version.ref = "junrar" }                          # RAR 解压
+
+shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }                       # Shizuku API（提权）
+shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }             # Shizuku 授权 Provider
+libsu-core = { group = "com.github.topjohnwu.libsu", name = "core", version.ref = "libsu" }                # root shell 库
+
+[plugins]                                               # 插件区：插件 id → 版本（与根 build.gradle.kts 对应）
+android-application = { id = "com.android.application", version.ref = "agp" }   # Android 应用插件
+android-library = { id = "com.android.library", version.ref = "agp" }           # Android 库插件
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" } # Kotlin Android 插件
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }  # Compose 编译器插件
+kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }             # kapt 注解处理
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }          # Hilt 插件

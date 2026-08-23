@@ -1,0 +1,107 @@
+# 03 · 接口契约（单一事实源）
+
+> 本文是模块接口的权威文档。**改接口先写 ADR，再改代码，然后同步本文**。
+> M0 状态：仅 core:search 的搜索契约已定义；其余模块接口在各自阶段实现时补录。
+
+## 搜索契约（core:search · M0 已定）
+
+### SearchConsentGate（许可闸门）
+
+```kotlin
+class SearchConsentGate(
+    private val settings: SearchSettings,
+    private val now: () -> Long = System::currentTimeMillis,
+) {
+    /** 用户显式触发（UI 点击）——始终放行。 */
+    fun beginUserInitiated(requestId: String): SearchSession
+
+    /** 后台/计划触发——仅当 backgroundIndexingEnabled=true 才放行，否则返回 null。 */
+    fun beginScheduled(requestId: String): SearchSession?
+
+    fun isAllowed(trigger: SearchTrigger): Boolean
+}
+```
+
+### SearchSession
+
+```kotlin
+class SearchSession private constructor(
+    val requestId: String,
+    val trigger: SearchTrigger,   // USER_ACTION / SCHEDULED_BACKGROUND
+    val startedAt: Long,
+) {
+    @Volatile var cancelled: Boolean  // UI「停止」置位，索引器每批轮询
+    fun cancel()
+}
+```
+
+### SearchSettings（由 feature:settings 用 DataStore 实现）
+
+```kotlin
+interface SearchSettings {
+    val backgroundIndexingEnabled: StateFlow<Boolean>  // 默认必须为 false
+}
+```
+
+### FileIndexer
+
+```kotlin
+interface FileIndexer {
+    /** 必须携带 SearchSession；无会话抛 UnauthorizedSearchException。 */
+    suspend fun index(session: SearchSession, scope: SearchScope, listener: SearchProgressListener): IndexResult
+    fun cancel(requestId: String)
+}
+
+sealed interface SearchScope {
+    data class AppScoped(val roots: List<File>, val safTrees: List<Uri> = emptyList()) : SearchScope   // L0
+    data class UserStorage(val allowedTopDirs: List<String>) : SearchScope                             // L1
+    data class FullDisk(val allowedTopDirs: List<String>, val includeData: Boolean = false) : SearchScope // L2
+}
+```
+
+### SearchProgress（进度契约，上报规则见 ADR-002）
+
+```kotlin
+enum class SearchPhase { INITIALIZING, SCANNING_DIRS, HASHING, INDEXING_DB, QUERYING, DONE, CANCELLED, FAILED }
+
+data class SearchProgress(
+    val requestId: String,
+    val phase: SearchPhase,
+    val scannedItems: Long, totalItems: Long,
+    val currentPath: String?, message: String,
+    val startedAt: Long, updatedAt: Long,
+) { val percent: Float }   // 0f..1f
+
+fun interface SearchProgressListener { fun onProgress(progress: SearchProgress) }
+```
+
+### SearchService（纯查询，无副作用）
+
+```kotlin
+interface SearchService {
+    suspend fun search(query: FileQuery): List<FileHit>   // 只读 FTS5 索引
+}
+```
+
+### 审计
+
+```kotlin
+data class ConsentAuditEntry(
+    val requestId: String, val trigger: String, val scope: String,
+    val granted: Boolean, val reason: String, val startedAt: Long,
+)   // 落库表 consent_audit（M1 实现）
+```
+
+## 预留接口（后续阶段补录）
+
+| 接口 | 归属 | 阶段 |
+|---|---|---|
+| `ChatEngine` / `ChatEvent` | core:ai:engine | M3/M6 |
+| `EmbeddingProvider` | core:ai:embed | M4 |
+| `StorageProvider` / `StorageMigrator` | core:storage | M1 |
+| `PrivilegeManager` | core:search | M7 |
+| `ToolCallingBus` / `AiTool` | core:ai:tools | M7 |
+| `DocumentParser` / `ArchiveExtractor` | core:ingest | M4 |
+| `OcrEngine` | core:ingest | M4 |
+| `ModelRepository` / `ModelImporter` / `HardwareProfile` | core:models | M6 |
+| `MemoryExtractor` / `MemoryStore` | core:ai:memory | M5 |

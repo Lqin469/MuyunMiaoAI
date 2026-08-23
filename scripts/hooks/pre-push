@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ============================================================
+# pre-push — git pre-push 钩子
+# 作用：每次 git push 前自动运行敏感信息自查脚本；
+#       脚本非零退出 → 推送被拦截，防止敏感信息上传 GitHub。
+# 安装：git config core.hooksPath scripts/hooks
+# 说明：$1=远程名 $2=远程URL（本钩子不关心，仅做检查）
+# ============================================================
+
+# 定位项目根目录（钩子所在目录的上一级）
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# 找到自查脚本
+CHECK_SCRIPT="$ROOT/scripts/check-secrets.sh"
+
+if [ -f "$CHECK_SCRIPT" ]; then
+  # 脚本存在 → 执行；失败则阻断推送
+  echo "==> [pre-push] 运行敏感信息自查..."
+  if ! bash "$CHECK_SCRIPT"; then
+    echo "==> [pre-push] 自查未通过，已阻断推送。请处理敏感信息后重试。"
+    exit 1
+  fi
+  echo "==> [pre-push] 自查通过。"
+else
+  # 脚本缺失 → 发出警告但允许推送（避免误伤正常流程），并提示补装
+  echo "==> [pre-push] 警告：未找到 scripts/check-secrets.sh，跳过自查。"
+fi
+
+# 返回 0：允许推送
+exit 0
