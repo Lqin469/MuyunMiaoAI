@@ -1,0 +1,36 @@
+package com.memuo.core.db                               // 声明包名：数据库模块根包
+
+import androidx.room.Database                             // 导入 Database：Room 数据库注解
+import androidx.room.RoomDatabase                         // 导入 RoomDatabase：数据库基类
+import com.memuo.core.db.dao.ConsentAuditDao              // 导入审计 DAO
+import com.memuo.core.db.dao.NoteDao                      // 导入笔记 DAO
+import com.memuo.core.db.entity.ChatMessage               // 导入消息实体
+import com.memuo.core.db.entity.ConsentAuditEntity        // 导入审计实体
+import com.memuo.core.db.entity.Conversation              // 导入会话实体
+import com.memuo.core.db.entity.Note                      // 导入笔记实体
+import com.memuo.core.db.entity.TodoItem                  // 导入待办实体
+
+/**
+ * 应用数据库（AppDatabase）—— 全应用唯一的 Room 数据库实例。
+ * version 从 1 开始；以后每次改表结构都要 +1 并提供 Migration（迁移策略）。
+ * 数据库文件路径由 StorageProvider.dbDir() 决定（R4/R5 自定义目录）。
+ */
+@Database(                                                // 声明这是 Room 数据库
+    entities = [                                          // 注册全部表对应的实体类
+        Note::class,                                      // 笔记表
+        TodoItem::class,                                  // 待办表
+        Conversation::class,                              // 会话表
+        ChatMessage::class,                               // 消息表
+        ConsentAuditEntity::class,                        // 搜索审计表
+    ],
+    version = 1,                                          // 数据库版本号（结构变更时 +1）
+    exportSchema = false,                                 // 不导出 schema（简化；正式发布建议开启）
+)
+abstract class AppDatabase : RoomDatabase() {             // 抽象数据库类（Room 生成实现）
+
+    /** 提供笔记 DAO。 */
+    abstract fun noteDao(): NoteDao                       // 笔记数据访问对象
+
+    /** 提供审计 DAO。 */
+    abstract fun consentAuditDao(): ConsentAuditDao       // 审计数据访问对象
+}

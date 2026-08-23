@@ -47,7 +47,10 @@ dependencies {                                         // 本模块依赖列表
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器（编译期生成注入代码）
 
-    // ---- 模块装配（M0 展示依赖方向；后续按阶段追加）----
-    implementation(project(":feature:filesearch"))     // 依赖文件检索业务模块
-    implementation(project(":core:search"))            // 依赖搜索能力模块（契约层）
+    // ---- 模块装配（依赖方向：feature → core → 基础设施）----
+    implementation(project(":feature:filesearch"))     // 文件检索业务模块（含进度条 UI）
+    implementation(project(":feature:settings"))       // 设置业务模块（提供 SearchSettings 实现）
+    implementation(project(":core:search"))            // 搜索能力模块（许可闸门/进度契约）
+    implementation(project(":core:db"))                // 数据库模块（Room 全库）
+    implementation(project(":core:storage"))           // 存储抽象模块（StorageProvider）
 }

@@ -1,0 +1,11 @@
+# 是否允许直接提交空白 Issue（false = 必须通过模板）
+blank_issues_enabled: false
+
+# 联系人/外部链接（用户可能走这些而非新建 Issue）
+contact_links:
+  - name: 项目文档（docs/）
+    url: https://github.com/Lqin469/MuyunMiaoAI/tree/main/docs
+    about: 提问前请先查阅项目文档（总纲 / 架构 / 契约 / 安全）
+  - name: 安全规范（严禁上传密钥）
+    url: https://github.com/Lqin469/MuyunMiaoAI/blob/main/AGENTS.md
+    about: 涉及密钥/安全的问题请先阅读 AGENTS.md 红线

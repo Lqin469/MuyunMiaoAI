@@ -1,5 +1,7 @@
 # MuyunMiaoAI 沐云杪AI · 开源 AI 备忘助手
 
+<div align="center"><img src="assets/banner.svg" alt="沐云杪AI MuyunMiaoAI" width="100%"/></div>
+
 > **沐云杪AI｜本地端侧AI备忘录，采用 MNN‑LLM 本地大模型与 RAG 知识库，面向安卓客户端。**
 >
 > 把「随手记」和「长期 AI 记忆」合二为一：日常笔记/待办，加上一个**只属于你的 AI 记忆库**——本地 MNN 离线推理 + 云端 API 双引擎，全部数据留在本机。

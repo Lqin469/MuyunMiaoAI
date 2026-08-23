@@ -92,13 +92,34 @@ data class ConsentAuditEntry(
 )   // 落库表 consent_audit（M1 实现）
 ```
 
+## 存储契约（core:storage · M1 已定）
+
+```kotlin
+interface StorageProvider {
+    val root: File
+    fun dbDir(): File; fun modelsDir(): File; fun knowledgeDir(): File; fun indexDir(): File
+    fun ensureDirs()
+}
+class DefaultStorageProvider(context: Context): StorageProvider       // 应用私有目录（默认）
+class CustomStorageProvider(customRoot: File): StorageProvider        // 用户指定目录（需 MANAGE_EXTERNAL_STORAGE / root，M7 开放）
+object StorageMigrator { fun migrate(from: File, to: File): Int }     // 复制 + 逐文件大小校验
+```
+
+## 数据库契约（core:db · M1 已定）
+
+```kotlin
+@Database(entities=[Note,TodoItem,Conversation,ChatMessage,ConsentAuditEntity], version=1)
+abstract class AppDatabase : RoomDatabase()          // 路径走 StorageProvider.dbDir()/muyunmiao.db
+interface NoteDao          // observeActive / upsert / softDelete / observeTodos / upsertTodo
+interface ConsentAuditDao  // insert / recent（consent_audit 落库）
+```
+
 ## 预留接口（后续阶段补录）
 
 | 接口 | 归属 | 阶段 |
 |---|---|---|
 | `ChatEngine` / `ChatEvent` | core:ai:engine | M3/M6 |
 | `EmbeddingProvider` | core:ai:embed | M4 |
-| `StorageProvider` / `StorageMigrator` | core:storage | M1 |
 | `PrivilegeManager` | core:search | M7 |
 | `ToolCallingBus` / `AiTool` | core:ai:tools | M7 |
 | `DocumentParser` / `ArchiveExtractor` | core:ingest | M4 |

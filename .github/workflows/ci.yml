@@ -38,3 +38,19 @@ jobs:
             test -f "$f" || { echo "MISSING: $f"; exit 1; }
           done
           echo "All required docs present."
+
+  # 密钥扫描：任何 PR 若包含 API Key / 私钥等敏感信息，自动失败（AI 协作红线兜底）
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # 拉全量历史，扫描所有提交
+
+      - name: 下载并运行 gitleaks
+        run: |
+          wget -q https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz
+          tar xzf gitleaks_8.18.4_linux_x64.tar.gz gitleaks
+          ./gitleaks detect --source . --redact --verbose
+          echo "gitleaks 扫描通过：未发现敏感信息。"
+

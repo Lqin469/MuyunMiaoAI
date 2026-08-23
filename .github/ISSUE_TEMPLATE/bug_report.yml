@@ -1,0 +1,44 @@
+name: Bug 报告                      # 模板名称（新建 Issue 时可选）
+description: 提交问题反馈，帮助我们修复 Bug
+title: "[Bug] "                     # 标题前缀
+labels: [bug]                       # 自动打标签
+body:                               # 表单主体
+  - type: input                     # 单行输入框
+    id: device                      # 字段 ID
+    attributes:                     # 字段属性
+      label: 设备型号与系统          # 字段标签
+      placeholder: 如 Xiaomi 14 / Android 15 / Vulkan 渲染
+    validations:                    # 校验
+      required: true                # 必填
+
+  - type: textarea                  # 多行文本框
+    id: desc                        # 字段 ID
+    attributes:
+      label: 问题描述               # 字段标签
+      placeholder: 清晰描述发生了什么
+    validations:
+      required: true                # 必填
+
+  - type: textarea                  # 多行文本框
+    id: steps                       # 字段 ID
+    attributes:
+      label: 复现步骤               # 字段标签
+      placeholder: 1. 打开… 2. 点击… 3. 出现…
+    validations:
+      required: false               # 选填
+
+  - type: textarea                  # 多行文本框
+    id: expected                    # 字段 ID
+    attributes:
+      label: 期望行为               # 字段标签
+      placeholder: 你希望它应该是怎样的
+    validations:
+      required: false               # 选填
+
+  - type: textarea                  # 多行文本框
+    id: logs                        # 字段 ID
+    attributes:
+      label: 日志/截图（可选）      # 字段标签
+      placeholder: 粘贴日志或贴图；**注意：不要粘贴任何 API Key / 密钥**
+    validations:
+      required: false               # 选填
