@@ -58,23 +58,44 @@ class ModelDownloadManager @Inject constructor(          // 构造函数注入
         return lastErr                                    // 重试耗尽返回错误
     }
 
-    /** 单次下载（断点续传）。 */
+    /** 单次下载：先 HEAD 判断是否已完整（避免对完整文件发 Range 导致 404），未完整则断点续传。 */
     private fun downloadOnce(url: String, target: File): String? {  // 单次下载
         return runCatching {                              // 捕获异常
-            val existing = if (target.exists()) target.length() else 0L  // 已下载字节数（断点）
+            // 1. HEAD 请求获取文件完整大小（用于判断是否已下载完整）
+            val total = runCatching {                     // HEAD 可能失败，容错
+                okHttp.newCall(                            // HEAD 请求
+                    Request.Builder().url(url)
+                        .header("User-Agent", UA)
+                        .header("Referer", "https://modelscope.cn/")
+                        .head().build()
+                ).execute().use { resp ->                 // 执行 HEAD
+                    if (resp.isSuccessful) resp.header("Content-Length")?.toLongOrNull() ?: -1L else -1L
+                }
+            }.getOrDefault(-1L)                           // 失败返回 -1（未知大小）
+
+            // 2. 已下载完整 → 直接跳过（避免 Range 导致 404/416）
+            if (total > 0 && target.exists() && target.length() >= total) return@runCatching null
+
+            // 3. 断点续传（仅对部分下载的文件发 Range）
+            val existing = if (target.exists()) target.length() else 0L  // 已下载字节
             val req = Request.Builder()                   // 构造请求
                 .url(url)                                 // URL
                 .header("User-Agent", UA)                 // 浏览器 UA（CDN 校验）
                 .header("Referer", "https://modelscope.cn/")  // 来源（CDN 校验）
                 .apply {                                  // 断点续传
-                    if (existing > 0) header("Range", "bytes=$existing-")  // 从已下载字节继续
+                    if (existing > 0 && (total < 0 || existing < total)) header("Range", "bytes=$existing-")  // 部分文件才续传
                 }
                 .build()                                  // 构建
             okHttp.newCall(req).execute().use { resp ->   // 同步执行
-                val resume = resp.code == 206             // 206 = 部分内容（续传成功）
-                if (!resp.isSuccessful && !resume) return@runCatching "HTTP ${resp.code}"  // 非成功响应
-                resp.body?.byteStream()?.use { input ->   // 读响应流
-                    FileOutputStream(target, resume).use { output -> input.copyTo(output) }  // 续传追加 / 首次覆盖
+                when {                                    // 按状态码处理
+                    resp.code == 416 -> return@runCatching null  // 416 = 已完整（Range 越界），视为成功
+                    resp.code == 206 || resp.isSuccessful -> {  // 206 续传 / 200 完整
+                        val resume = resp.code == 206     // 是否续传（追加写）
+                        resp.body?.byteStream()?.use { input ->  // 读响应流
+                            FileOutputStream(target, resume).use { output -> input.copyTo(output) }  // 追加/覆盖
+                        }
+                    }
+                    else -> return@runCatching "HTTP ${resp.code}"  // 其他错误
                 }
             }
             if (target.exists() && target.length() > 0) null else "文件为空"  // 校验非空
