@@ -25,7 +25,7 @@ shizuku = "13.1.5"                                      # Shizuku（adb/root 提
 libsu = "5.2.2"                                         # libsu（root shell）
 securityCrypto = "1.1.0"                                # 安全加密存储（API Key）
 documentfile = "1.0.1"                                  # DocumentFile（SAF 目录遍历）
-markdownRenderer = "0.43.0"                             # Compose Markdown 渲染器
+markdownRenderer = "0.39.2"                             # Compose Markdown 渲染器（0.43 需 compileSdk37，此版本兼容 36）
 
 [libraries]                                             # 依赖坐标区：库别名 → 坐标
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }              # AndroidX 核心库
