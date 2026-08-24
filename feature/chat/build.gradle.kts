@@ -6,6 +6,7 @@
 plugins {                                              // 本模块启用的插件
     alias(libs.plugins.android.library)                // Android 库插件（产出 AAR）
     alias(libs.plugins.kotlin.android)                 // Kotlin 支持
+    alias(libs.plugins.kotlin.compose)                 // Compose 编译器插件（Kotlin 2.0+ 必需）
     alias(libs.plugins.kapt)                           // kapt 注解处理器（Hilt 需要）
     alias(libs.plugins.hilt)                           // Hilt 依赖注入插件
 }

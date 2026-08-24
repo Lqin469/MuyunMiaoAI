@@ -6,6 +6,9 @@
 plugins {                                              // 本模块启用的插件
     alias(libs.plugins.android.library)                // Android 库插件（产出 AAR）
     alias(libs.plugins.kotlin.android)                 // Kotlin 支持
+    alias(libs.plugins.kotlin.compose)                 // Compose 编译器插件（Kotlin 2.0+ 必需）
+    alias(libs.plugins.kapt)                           // kapt 注解处理器（Hilt 需要）
+    alias(libs.plugins.hilt)                           // Hilt 依赖注入插件
 }
 
 android {                                              // Android 构建配置块
@@ -28,9 +31,14 @@ android {                                              // Android 构建配置�
 
 dependencies {                                         // 本模块依赖列表
     implementation(project(":core:search"))            // 依赖搜索能力模块（许可闸门/进度契约）
+
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础
     implementation(libs.compose.material3)             // Material3 组件（进度条/按钮）
+
+    implementation(libs.hilt.android)                  // Hilt 运行时（@HiltViewModel 需要）
+    kapt(libs.hilt.compiler)                           // Hilt 注解处理器
+
     implementation(libs.lifecycle.viewmodel.compose)   // ViewModel 与 Compose 绑定
     implementation(libs.kotlinx.coroutines.android)    // 协程（状态流）
 }
