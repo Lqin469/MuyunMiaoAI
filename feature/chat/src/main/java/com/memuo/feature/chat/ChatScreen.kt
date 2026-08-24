@@ -32,7 +32,6 @@ import androidx.compose.ui.Modifier                       // 导入 Modifier：�
 import androidx.compose.ui.unit.dp                        // 导入 dp：尺寸单位
 import androidx.hilt.navigation.compose.hiltViewModel     // 导入 hiltViewModel：Hilt 提供 ViewModel
 import com.memuo.core.db.entity.ChatMessage                // 导入消息实体
-import com.mikepenz.markdown.m3.Markdown                   // 导入 Markdown：Markdown 渲染器（Material3）
 
 /**
  * 对话页 —— AI 对话界面（M3）。
@@ -126,7 +125,7 @@ private fun MessageBubble(msg: ChatMessage) {             // 消息气泡组件
                     style = MaterialTheme.typography.bodyMedium,  // 正文样式
                 )
             } else {                                      // 助手消息：Markdown 渲染
-                Markdown(                                 // Markdown 渲染器
+                MarkdownText(                             // 自研 Markdown 渲染
                     content = msg.content.ifBlank { "…" },  // 内容（空显示省略号）
                     modifier = Modifier.padding(12.dp),   // 内边距
                 )

@@ -38,8 +38,6 @@ dependencies {                                         // 本模块依赖列表
     implementation(libs.compose.ui)                    // Compose UI 基础
     implementation(libs.compose.material3)             // Material3 组件
     implementation(libs.compose.material.icons.core)   // Material 基础图标（返回箭头）
-    implementation(libs.markdown.renderer)             // Markdown 渲染核心
-    implementation(libs.markdown.renderer.m3)          // Markdown 渲染（Material3 主题）
 
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器

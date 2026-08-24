@@ -25,7 +25,6 @@ shizuku = "13.1.5"                                      # Shizuku（adb/root 提
 libsu = "5.2.2"                                         # libsu（root shell）
 securityCrypto = "1.1.0"                                # 安全加密存储（API Key）
 documentfile = "1.0.1"                                  # DocumentFile（SAF 目录遍历）
-markdownRenderer = "0.39.2"                             # Compose Markdown 渲染器（0.43 需 compileSdk37，此版本兼容 36）
 
 [libraries]                                             # 依赖坐标区：库别名 → 坐标
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }              # AndroidX 核心库
@@ -51,8 +50,6 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }            # WorkManager
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" } # 加密存储
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" } # SAF 目录遍历
-markdown-renderer = { group = "com.mikepenz", name = "multiplatform-markdown-renderer", version.ref = "markdownRenderer" } # Markdown 渲染核心
-markdown-renderer-m3 = { group = "com.mikepenz", name = "multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" } # Markdown 渲染（Material3 主题）
 
 pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfboxAndroid" }   # PDF 解析（group 是 com.tom-roush，常见误区）
 commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }  # 压缩包
