@@ -51,10 +51,12 @@ import androidx.navigation.compose.composable              // 导入 composable�
 import androidx.navigation.compose.currentBackStackEntryAsState  // 导入 currentBackStackEntryAsState：当前路由
 import androidx.navigation.compose.rememberNavController   // 导入 rememberNavController：导航控制器
 import com.memuo.core.db.entity.EngineType                  // 导入引擎类型枚举
+import com.memuo.feature.chat.ChatListScreen               // 导入会话列表页
 import com.memuo.feature.chat.ChatScreen                    // 导入对话页
 import com.memuo.feature.chat.ChatViewModel                 // 导入对话 ViewModel
 import com.memuo.feature.notes.NoteEditScreen               // 导入笔记编辑页
 import com.memuo.feature.notes.NoteListScreen               // 导入笔记列表页
+import com.memuo.feature.notes.TodoListScreen               // 导入待办清单页
 import com.memuo.feature.settings.CloudConfigScreen         // 导入云端配置页
 import com.memuo.feature.settings.DatabaseConfigScreen      // 导入数据库配置页
 import com.memuo.feature.settings.MemoryScreen              // 导入记忆库页
@@ -143,7 +145,12 @@ fun NoteApp() {                                          // 应用根组件
                         val noteId = entry.arguments?.getString("noteId")?.toLongOrNull() ?: 0L
                         NoteEditScreen(noteId = noteId, onBack = { nav.popBackStack() })
                     }
-                    composable("chat") { ChatTab() }      // 对话
+                    composable("todo") { TodoListScreen() }  // 待办清单
+                    composable("chat") { ChatListScreen(onOpenConversation = { id -> nav.navigate("chat/$id") }) }  // 会话列表
+                    composable("chat/{convId}") { entry ->  // 对话页
+                        val convId = entry.arguments?.getString("convId")?.toLongOrNull() ?: 0L
+                        ChatScreen(conversationId = convId, onBack = { nav.popBackStack() })  // 对话（返回列表）
+                    }
                     composable("db") { DatabaseConfigScreen() }   // 数据库配置
                     composable("memory") { MemoryScreen() }        // 记忆库
                     composable("cloud") { CloudConfigScreen() }    // 云端 API 配置
@@ -175,6 +182,7 @@ private fun AppDrawer(                                    // 侧边菜单
             )
             HorizontalDivider()                           // 分割线
 
+            DrawerItem("待办清单") { onNavigate("todo") }  // 待办清单
             DrawerItem("数据库配置") { onNavigate("db") }  // 数据库配置
             DrawerItem("记忆库") { onNavigate("memory") }  // 记忆库
 
@@ -300,25 +308,5 @@ private fun CapsuleSegment(                               // 胶囊单段
             color = textColor,                            // 文字色（动画）
             style = MaterialTheme.typography.labelLarge,  // 字体
         )
-    }
-}
-
-/**
- * 对话页 —— 进入时自动确保会话（有则复用最新，无则新建）。
- */
-@Composable                                               // 可组合 UI 函数
-private fun ChatTab(                                      // 对话页
-    viewModel: ChatViewModel = hiltViewModel(),           // Hilt 提供 ViewModel
-) {
-    var conversationId by remember { mutableStateOf(0L) } // 当前会话 ID（0 = 加载中）
-
-    LaunchedEffect(Unit) {                                // 进入时执行一次
-        viewModel.ensureConversation { id -> conversationId = id }  // 确保会话存在（回调拿真实 ID）
-    }
-
-    if (conversationId != 0L) {                           // 会话就绪
-        ChatScreen(conversationId = conversationId, viewModel = viewModel)  // 渲染对话页
-    } else {                                              // 加载中
-        Text("正在加载对话…", modifier = Modifier.padding(24.dp))  // 占位提示
     }
 }

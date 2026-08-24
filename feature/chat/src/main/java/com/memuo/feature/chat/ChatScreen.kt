@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.padding          // 导入 padding：�
 import androidx.compose.foundation.lazy.LazyColumn         // 导入 LazyColumn：消息列表
 import androidx.compose.foundation.lazy.items              // 导入 items：列表项扩展
 import androidx.compose.foundation.shape.RoundedCornerShape // 导入 RoundedCornerShape：圆角
+import androidx.compose.material.icons.Icons               // 导入 Icons：图标集
+import androidx.compose.material.icons.automirrored.filled.ArrowBack  // 导入 ArrowBack：返回箭头
 import androidx.compose.material3.Button                  // 导入 Button：按钮
 import androidx.compose.material3.ExperimentalMaterial3Api // 导入 ExperimentalMaterial3Api：实验性 API 注解
+import androidx.compose.material3.Icon                    // 导入 Icon：图标
+import androidx.compose.material3.IconButton              // 导入 IconButton：图标按钮
 import androidx.compose.material3.MaterialTheme           // 导入 MaterialTheme：主题
 import androidx.compose.material3.OutlinedTextField       // 导入 OutlinedTextField：输入框
 import androidx.compose.material3.Scaffold                // 导入 Scaffold：页面脚手架
@@ -28,6 +32,7 @@ import androidx.compose.ui.Modifier                       // 导入 Modifier：�
 import androidx.compose.ui.unit.dp                        // 导入 dp：尺寸单位
 import androidx.hilt.navigation.compose.hiltViewModel     // 导入 hiltViewModel：Hilt 提供 ViewModel
 import com.memuo.core.db.entity.ChatMessage                // 导入消息实体
+import com.mikepenz.markdown.m3.Markdown                   // 导入 Markdown：Markdown 渲染器（Material3）
 
 /**
  * 对话页 —— AI 对话界面（M3）。
@@ -37,6 +42,7 @@ import com.memuo.core.db.entity.ChatMessage                // 导入消息实体
 @Composable                                               // 可组合 UI 函数
 fun ChatScreen(                                           // 对话页
     conversationId: Long,                                 // 当前会话 ID
+    onBack: () -> Unit,                                   // 返回（回会话列表）
     viewModel: ChatViewModel = hiltViewModel(),           // 用 Hilt 获取 ViewModel
 ) {
     LaunchedEffect(conversationId) {                      // 会话 ID 变化时
@@ -48,7 +54,16 @@ fun ChatScreen(                                           // 对话页
     var input by remember { mutableStateOf("") }          // 输入框内容
 
     Scaffold(                                             // 页面脚手架
-        topBar = { TopAppBar(title = { Text("AI 对话") }) },  // 顶部栏
+        topBar = {                                       // 顶部栏
+            TopAppBar(                                   // 顶部栏组件
+                title = { Text("AI 对话") },             // 标题
+                navigationIcon = {                       // 返回按钮
+                    IconButton(onClick = onBack) {       // 点击返回列表
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")  // 返回箭头
+                    }
+                },
+            )
+        },
     ) { innerPadding ->                                   // 内容区
         Column(                                           // 纵向布局
             modifier = Modifier.fillMaxSize().padding(innerPadding),  // 铺满 + 内边距
@@ -90,7 +105,7 @@ fun ChatScreen(                                           // 对话页
     }
 }
 
-/** 单条消息气泡：user 靠右、assistant 靠左。 */
+/** 单条消息气泡：user 靠右、assistant 靠左；assistant 消息用 Markdown 渲染。 */
 @Composable                                               // 可组合 UI 函数
 private fun MessageBubble(msg: ChatMessage) {             // 消息气泡组件
     val isUser = msg.role == "user"                       // 判断是否用户消息
@@ -104,11 +119,18 @@ private fun MessageBubble(msg: ChatMessage) {             // 消息气泡组件
             color = if (isUser) MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.surfaceVariant,  // 用户用主色容器、助手用灰底
         ) {
-            Text(                                         // 气泡文字
-                text = msg.content.ifBlank { "…" },        // 内容（空显示省略号）
-                modifier = Modifier.padding(12.dp),       // 内边距
-                style = MaterialTheme.typography.bodyMedium,  // 正文样式
-            )
+            if (isUser) {                                 // 用户消息：纯文本
+                Text(                                     // 气泡文字
+                    text = msg.content,                   // 内容
+                    modifier = Modifier.padding(12.dp),   // 内边距
+                    style = MaterialTheme.typography.bodyMedium,  // 正文样式
+                )
+            } else {                                      // 助手消息：Markdown 渲染
+                Markdown(                                 // Markdown 渲染器
+                    content = msg.content.ifBlank { "…" },  // 内容（空显示省略号）
+                    modifier = Modifier.padding(12.dp),   // 内边距
+                )
+            }
         }
     }
 }

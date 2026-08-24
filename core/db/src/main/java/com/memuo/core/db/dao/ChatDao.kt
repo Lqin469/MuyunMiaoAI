@@ -37,4 +37,12 @@ interface ChatDao {                                        // 会话数据访问
     /** 更新会话的最后活跃时间。 */
     @Query("UPDATE conversations SET updatedAt = :ts WHERE id = :id")  // SQL：更新活跃时间
     suspend fun touch(id: Long, ts: Long)                 // 按 ID 更新活跃时间
+
+    /** 删除一个会话。 */
+    @Query("DELETE FROM conversations WHERE id = :id")    // SQL：按 ID 删除会话
+    suspend fun deleteConversation(id: Long)              // 删除会话
+
+    /** 删除某会话的全部消息。 */
+    @Query("DELETE FROM messages WHERE convId = :convId") // SQL：按会话删除消息
+    suspend fun deleteMessagesByConv(convId: Long)        // 删除会话消息
 }

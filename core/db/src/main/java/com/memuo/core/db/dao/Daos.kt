@@ -42,6 +42,14 @@ interface NoteDao {                                        // 笔记数据访问
     /** 插入或更新一条待办。 */
     @Insert(onConflict = OnConflictStrategy.REPLACE)       // 插入，冲突替换
     suspend fun upsertTodo(item: TodoItem): Long           // 返回行 ID
+
+    /** 更新待办的完成状态。 */
+    @Query("UPDATE todo_items SET done = :done WHERE id = :id")  // SQL：更新完成状态
+    suspend fun updateTodoDone(id: Long, done: Boolean)    // 按 ID 更新
+
+    /** 删除一条待办。 */
+    @Query("DELETE FROM todo_items WHERE id = :id")        // SQL：按 ID 删除
+    suspend fun deleteTodo(id: Long)                       // 删除待办
 }
 
 /**

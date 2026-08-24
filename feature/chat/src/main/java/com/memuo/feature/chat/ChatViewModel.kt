@@ -88,6 +88,14 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
         }
     }
 
+    /** 删除一个会话（连同其消息）。 */
+    fun deleteConversation(id: Long) {                   // 删除会话
+        viewModelScope.launch {                          // 协程中执行
+            chatDao.deleteMessagesByConv(id)             // 先删消息
+            chatDao.deleteConversation(id)               // 再删会话
+        }
+    }
+
     /** 发送一条用户消息并流式接收 AI 回复。 */
     fun send(text: String) {                             // 发送消息
         if (text.isBlank() || convId == 0L) return       // 空文本或无会话则忽略
