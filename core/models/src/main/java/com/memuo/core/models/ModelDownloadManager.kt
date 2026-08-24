@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext                      // 导入 withContext
 import okhttp3.OkHttpClient                               // 导入 OkHttp 客户端
 import okhttp3.Request                                    // 导入 Request
 import java.io.File                                        // 导入 File
+import java.io.FileOutputStream                            // 导入 FileOutputStream：支持追加写（断点续传）
 import javax.inject.Inject                                 // 导入 Inject
 import javax.inject.Named                                  // 导入 Named：限定符
 import javax.inject.Singleton                              // 导入 Singleton
@@ -73,7 +74,7 @@ class ModelDownloadManager @Inject constructor(          // 构造函数注入
                 val resume = resp.code == 206             // 206 = 部分内容（续传成功）
                 if (!resp.isSuccessful && !resume) return@runCatching "HTTP ${resp.code}"  // 非成功响应
                 resp.body?.byteStream()?.use { input ->   // 读响应流
-                    target.outputStream(resume).use { output -> input.copyTo(output) }  // 续传追加 / 首次覆盖
+                    FileOutputStream(target, resume).use { output -> input.copyTo(output) }  // 续传追加 / 首次覆盖
                 }
             }
             if (target.exists() && target.length() > 0) null else "文件为空"  // 校验非空
