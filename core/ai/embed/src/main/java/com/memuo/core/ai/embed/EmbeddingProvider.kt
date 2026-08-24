@@ -1,5 +1,6 @@
 package com.memuo.core.ai.embed                          // 声明包名：嵌入（Embedding）模块
 
+import javax.inject.Inject                                 // 导入 Inject：构造函数注入（让 Hilt 可实例化）
 import kotlin.math.sqrt                                  // 导入 sqrt：开方（归一化用）
 
 /**
@@ -19,7 +20,7 @@ interface EmbeddingProvider {                            // 嵌入提供者接�
  * 作用：让「分块→嵌入→检索→作答」闭环在 M4 即可运行；M6 用 bge（MNN 本地）替换本实现，
  * EmbeddingProvider 接口不变，检索层无感升级。
  */
-class SimpleHashEmbeddingProvider : EmbeddingProvider {  // 简易哈希嵌入（占位）
+class SimpleHashEmbeddingProvider @Inject constructor() : EmbeddingProvider {  // 简易哈希嵌入（占位）；@Inject 让 Hilt 可实例化
 
     /** 向量维度 = 256。 */
     override val dim: Int = 256                          // 维度 256
