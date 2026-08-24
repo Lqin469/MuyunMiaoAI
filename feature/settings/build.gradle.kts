@@ -35,10 +35,12 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:models"))            // 依赖模型模块（模型导入 ModelImporter）
     implementation(project(":core:db"))                // 依赖数据库模块（EngineType/MemoryDao 等）
     implementation(project(":core:storage"))           // 依赖存储模块（数据库配置页 StorageProvider）
+    implementation(project(":core:ingest"))            // 依赖入库模块（知识库投喂 KnowledgeRepository）
 
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础
     implementation(libs.compose.material3)             // Material3 组件（开关/按钮/输入框/Scaffold）
+    implementation(libs.compose.material.icons.core)   // Material 基础图标（知识库投喂图标）
 
     implementation(libs.datastore.preferences)         // DataStore 偏好存储（非敏感设置）
     implementation(libs.security.crypto)               // 安全加密存储（apiKey 用 Keystore 加密）

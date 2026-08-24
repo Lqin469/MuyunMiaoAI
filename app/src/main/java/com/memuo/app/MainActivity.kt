@@ -60,6 +60,8 @@ import com.memuo.feature.notes.NoteListScreen               // 导入笔记列�
 import com.memuo.feature.notes.TodoListScreen               // 导入待办清单页
 import com.memuo.feature.settings.CloudConfigScreen         // 导入云端配置页
 import com.memuo.feature.settings.DatabaseConfigScreen      // 导入数据库配置页
+import com.memuo.feature.settings.KnowledgeScreen           // 导入知识库页
+import com.memuo.feature.settings.KnowledgeViewModel        // 导入知识库 ViewModel
 import com.memuo.feature.settings.MemoryScreen              // 导入记忆库页
 import com.memuo.feature.settings.SettingsViewModel         // 导入设置 ViewModel
 import dagger.hilt.android.AndroidEntryPoint               // 导入 AndroidEntryPoint：Hilt 注入入口
@@ -155,6 +157,7 @@ fun NoteApp() {                                          // 应用根组件
                     }
                     composable("db") { DatabaseConfigScreen() }   // 数据库配置
                     composable("memory") { MemoryScreen() }        // 记忆库
+                    composable("knowledge") { KnowledgeRoute() }   // 知识库投喂
                     composable("cloud") { CloudConfigScreen() }    // 云端 API 配置
                 }
             }
@@ -185,6 +188,7 @@ private fun AppDrawer(                                    // 侧边菜单
             HorizontalDivider()                           // 分割线
 
             DrawerItem("待办清单") { onNavigate("todo") }  // 待办清单
+            DrawerItem("知识库") { onNavigate("knowledge") }  // 知识库投喂
             DrawerItem("数据库配置") { onNavigate("db") }  // 数据库配置
             DrawerItem("记忆库") { onNavigate("memory") }  // 记忆库
 
@@ -311,4 +315,23 @@ private fun CapsuleSegment(                               // 胶囊单段
             style = MaterialTheme.typography.labelLarge,  // 字体
         )
     }
+}
+
+/**
+ * 知识库路由 —— 创建 SAF 选择器（文件夹/单文件）+ ViewModel，交给 KnowledgeScreen。
+ */
+@Composable                                               // 可组合 UI 函数
+private fun KnowledgeRoute() {                            // 知识库路由
+    val viewModel: KnowledgeViewModel = hiltViewModel()   // 知识库 ViewModel
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->  // 文件夹选择器
+        uri?.let { viewModel.ingestFolder(it) }           // 投喂文件夹
+    }
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->  // 单文件选择器
+        uri?.let { viewModel.ingestFile(it) }             // 投喂单文件
+    }
+    KnowledgeScreen(                                      // 知识库页
+        onPickFolder = { folderPicker.launch(null) },     // 点文件夹按钮
+        onPickFile = { filePicker.launch(arrayOf("*/*")) },  // 点文件按钮
+        viewModel = viewModel,                            // 共用 ViewModel
+    )
 }
