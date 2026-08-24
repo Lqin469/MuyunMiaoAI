@@ -25,15 +25,22 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
 ) {
 
     /** 检测目录是否为合法 MNN 模型目录（含 config.json + llm.mnn + llm.mnn.weight）。 */
-    fun detectMnnModel(dir: File): Boolean =             // 模型检测（单目录）
-        File(dir, "config.json").exists() &&             // config.json（createLLM 入口）
-            File(dir, "llm.mnn").exists() &&             // 模型结构
-            File(dir, "llm.mnn.weight").exists()         // 模型权重
+    /** MNN 模型必需文件（Qwen3.5 多模态需 tokenizer.txt，否则 load 失败）。 */
+    private val REQUIRED_FILES = listOf(                  // 必需文件清单
+        "config.json", "llm.mnn", "llm.mnn.weight", "tokenizer.txt",
+    )
 
-    /** 校验模型完整性：三项齐全 + 权重文件大小合理（>100MB，防复制不完整）。 */
+    fun detectMnnModel(dir: File): Boolean =             // 模型检测（单目录）
+        REQUIRED_FILES.all { File(dir, it).exists() }    // 必需文件齐全
+
+    /** 返回目录中缺失的必需文件（诊断用，空列表 = 齐全）。 */
+    fun missingFiles(dir: File): List<String> =          // 缺失文件诊断
+        REQUIRED_FILES.filterNot { File(dir, it).exists() }  // 返回缺失项
+
+    /** 校验模型完整性：必需文件齐全 + 权重文件大小合理（>100MB，防复制不完整）。 */
     private fun verifyModel(dir: File): Boolean {        // 完整性校验
-        if (!detectMnnModel(dir)) return false           // 三项齐全
-        return File(dir, "llm.mnn.weight").length() > 100L * 1024 * 1024  // 权重 >100MB（Qwen 0.8B 约 449M）
+        if (!detectMnnModel(dir)) return false           // 必需文件齐全
+        return File(dir, "llm.mnn.weight").length() > 100L * 1024 * 1024  // 权重 >100MB（Qwen 0.8B 约 470M）
     }
 
     /** 递归查找含 config.json + llm.mnn + llm.mnn.weight 的目录（最多 5 层，兼容 HF 缓存嵌套）。 */
@@ -80,10 +87,10 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
         ok && verifyModel(target)                      // 校验（三项齐全）
     }
 
-    /** 判断 DocumentFile 是否为合法模型目录（含 config.json + llm.mnn + llm.mnn.weight）。 */
+    /** 判断 DocumentFile 是否为合法模型目录（必需文件齐全：config.json + llm.mnn + llm.mnn.weight + tokenizer.txt）。 */
     private fun isModelDir(doc: DocumentFile): Boolean {  // SAF 模型目录判断
         val names = doc.listFiles().mapNotNull { it.name }.toSet()  // 收集文件名
-        return "config.json" in names && "llm.mnn" in names && "llm.mnn.weight" in names  // 三项齐全
+        return REQUIRED_FILES.all { it in names }         // 必需文件齐全
     }
 
     /** 递归查找 SAF 目录树中的模型目录（最多 5 层，兼容 HF 缓存 `snapshots/_no_sha_` 嵌套）。 */

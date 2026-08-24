@@ -52,12 +52,14 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
         val ptr = ensureLoaded()                        // 确保模型加载
         if (ptr == 0L) {                                // 模型未就绪/加载失败
             val dir = modelDir()                        // 模型目录
-            val config = File(dir, "config.json")       // 配置
-            val weight = File(dir, "llm.mnn.weight")    // 权重
+            // 必需文件清单（Qwen3.5 多模态 load 需要 tokenizer.txt）
+            val required = listOf("config.json", "llm.mnn", "llm.mnn.weight", "tokenizer.txt", "llm.mnn.json")
+            val missing = required.filterNot { File(dir, it).exists() }  // 缺失的文件
+            val weight = File(dir, "llm.mnn.weight")    // 权重文件
             val msg = when {                            // 按状态给具体提示
-                !config.exists() -> "⚠️ 本地模型未就绪：请点左上角 ☰ →「导入模型」，选择 Qwen 模型文件夹（含 config.json + llm.mnn + llm.mnn.weight）。\n"
-                !weight.exists() -> "⚠️ 模型文件不完整：缺少 llm.mnn.weight，请重新导入完整模型。\n"
-                else -> "⚠️ 本地模型加载失败：模型可能不完整或损坏，请重新导入（llm.mnn.weight 约 449M）。\n"
+                missing.isNotEmpty() -> "⚠️ 模型文件缺失：${missing.joinToString("、")}。\n请重新导入完整模型目录（含上述全部文件）。\n"
+                weight.length() < 100L * 1024 * 1024 -> "⚠️ 权重文件不完整（${weight.length() / 1024 / 1024}MB），应为约 470MB。请重新导入。\n"
+                else -> "⚠️ 模型加载失败：文件齐全但 MNN 加载出错，可能是 config.json 与权重不匹配。请用 MNN 官方导出的 Qwen 模型。\n"
             }
             trySend(ChatEvent.Delta(msg))               // 提示
             trySend(ChatEvent.Done("no_model"))         // 结束
