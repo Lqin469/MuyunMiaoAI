@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel                       // 导入 ViewModel：
 import androidx.lifecycle.viewModelScope                  // 导入 viewModelScope：ViewModel 协程作用域
 import com.memuo.core.ai.engine.ChatEngine                 // 导入对话引擎接口
 import com.memuo.core.ai.engine.ChatEvent                  // 导入对话事件
+import com.memuo.core.ai.memory.MemoryStore                // 导入记忆仓库（M5 每 N 轮提炼）
 import com.memuo.core.db.dao.ChatDao                       // 导入会话 DAO
 import com.memuo.core.db.entity.ChatMessage                // 导入消息实体
 import com.memuo.core.db.entity.Conversation               // 导入会话实体
@@ -24,6 +25,7 @@ import javax.inject.Inject                                 // 导入 Inject：�
 class ChatViewModel @Inject constructor(                 // 构造函数注入
     private val chatDao: ChatDao,                        // 注入会话 DAO
     private val engine: ChatEngine,                      // 注入对话引擎（当前为云端实现）
+    private val memoryStore: MemoryStore,                // 注入记忆仓库（M5 提炼）
 ) : ViewModel() {                                        // 继承 ViewModel
 
     /** 会话列表状态流（用于会话侧栏/列表页）。 */
@@ -100,9 +102,17 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
                         }
                         _streaming.value = false         // 退出流式状态
                         _streamText.value = ""           // 清空
+                        maybeRemember(history)           // 每 N 轮触发记忆提炼（M5）
                     }
                 }
             }
         }
+    }
+
+    /** 每 4 轮对话触发一次记忆提炼（M5）：把最近 8 条消息交给 MemoryStore 提炼并落库。 */
+    private suspend fun maybeRemember(history: List<ChatMessage>) {  // 记忆提炼触发
+        val userCount = history.count { it.role == "user" }  // 统计用户消息数（轮数）
+        if (userCount == 0 || userCount % 4 != 0) return     // 不是第 4 的倍数轮则不提炼
+        memoryStore.remember(history.takeLast(8))           // 取最近 8 条消息提炼并落库
     }
 }

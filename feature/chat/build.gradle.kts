@@ -31,6 +31,7 @@ android {                                              // Android 构建配置�
 dependencies {                                         // 本模块依赖列表
     implementation(project(":core:db"))                // 依赖数据库模块（会话/消息）
     implementation(project(":core:ai:engine"))         // 依赖引擎模块（ChatEngine/ChatEvent）
+    implementation(project(":core:ai:memory"))         // 依赖记忆模块（每 N 轮提炼）
 
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础

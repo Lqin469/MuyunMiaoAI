@@ -140,6 +140,14 @@ class KnowledgeRepository { suspend fun ingestNote(noteId); fun observeNoteBridg
 class RagService { suspend fun ask(folderId, question): Flow<ChatEvent> }
 ```
 
+## 记忆契约（core:ai:memory · M5 已定）
+
+```kotlin
+data class MemoryEntry(type: MemoryType, topic: String, text: String)
+class MemoryExtractor { suspend fun extract(messages: List<ChatMessage>): List<MemoryEntry> }  // LLM 提炼 JSON
+class MemoryStore { suspend fun remember(messages): Int; suspend fun search(keyword, limit): List<KbMemory> }  // 嵌入落库 + 关键词检索
+```
+
 ## 预留接口（后续阶段补录）
 
 | 接口 | 归属 | 阶段 |
@@ -148,4 +156,3 @@ class RagService { suspend fun ask(folderId, question): Flow<ChatEvent> }
 | `ToolCallingBus` / `AiTool` | core:ai:tools | M7 |
 | `OcrEngine` | core:ingest | M6 |
 | `ModelRepository` / `ModelImporter` / `HardwareProfile` | core:models | M6 |
-| `MemoryExtractor` / `MemoryStore` | core:ai:memory | M5 |

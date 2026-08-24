@@ -6,6 +6,7 @@ import com.memuo.core.db.dao.ChatDao                      // 导入会话 DAO
 import com.memuo.core.db.dao.ConsentAuditDao              // 导入审计 DAO
 import com.memuo.core.db.dao.FileLocationDao              // 导入文件位置 DAO
 import com.memuo.core.db.dao.KbDao                        // 导入知识库 DAO
+import com.memuo.core.db.dao.MemoryDao                    // 导入记忆 DAO
 import com.memuo.core.db.dao.NoteDao                      // 导入笔记 DAO
 import com.memuo.core.storage.StorageProvider             // 导入存储提供者（决定数据库文件路径）
 import dagger.Module                                      // 导入 Module：Hilt 模块注解
@@ -53,6 +54,10 @@ object DatabaseModule {                                    // 单例对象：提
     /** 提供 FileLocationDao。 */
     @Provides                                              // 标记为提供依赖
     fun provideFileLocationDao(db: AppDatabase): FileLocationDao = db.fileLocationDao()  // 从数据库取文件位置 DAO
+
+    /** 提供 MemoryDao。 */
+    @Provides                                              // 标记为提供依赖
+    fun provideMemoryDao(db: AppDatabase): MemoryDao = db.memoryDao()  // 从数据库取记忆 DAO
 
     /** 提供 ConsentAuditDao。 */
     @Provides                                              // 标记为提供依赖

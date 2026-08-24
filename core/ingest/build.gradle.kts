@@ -29,6 +29,7 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:db"))                // 依赖数据库模块（KbDao/NoteDao）
     implementation(project(":core:ai:embed"))          // 依赖嵌入模块（EmbeddingProvider/HybridRetriever）
     implementation(project(":core:ai:engine"))         // 依赖引擎模块（RagService 用 ChatEngine）
+    implementation(project(":core:ai:memory"))         // 依赖记忆模块（RagService 并入长期记忆）
 
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器
