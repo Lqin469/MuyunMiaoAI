@@ -10,12 +10,12 @@
 | `todo_items` | 待办条目 | id, noteId, text, done, order | ✅ M1 建表 |
 | `conversations` | AI 会话 | id, title, engine(LOCAL/CLOUD), kbFolderId, createdAt, updatedAt | ✅ M1 建表 |
 | `messages` | 聊天消息 | id, convId, role, content, citations(JSON), ts | ✅ M1 建表 |
-| `kb_folders` | 知识库文件夹（SAF） | folderId, displayName, treeUri, createdAt | M4 |
-| `kb_documents` | 已投喂文档 | docId(hash), folderId, fileName, fileUri, fileHash, status, chunkCount, indexedAt | M4 |
-| `kb_chunks` | 分块 + 向量 | id, docId, folderId, seq, text, embedding(BLOB: FloatArray) | M4 |
-| `kb_chunks_fts` | 分块全文索引（FTS5 外表） | text, docId, folderId | M4 |
+| `kb_folders` | 知识库文件夹（SAF） | folderId, displayName, treeUri, createdAt | M4 后续 |
+| `kb_documents` | 已投喂文档 | docId(hash), folderId, fileName, fileUri, fileHash, status, chunkCount, indexedAt | ✅ M4 建表 |
+| `kb_chunks` | 分块 + 向量 | id, docId, folderId, seq, text, embedding(BLOB: FloatArray) | ✅ M4 建表 |
+| `kb_chunks_fts` | 分块全文索引（FTS5 外表） | text, docId, folderId | M4 后续（暂用 LIKE） |
 | `kb_memory` | 会话记忆条目（R6） | id, type(FACT/PREFERENCE/TODO), topic, text, source(chat/memo/import), ts, embedding | M5 |
-| `file_locations` | 不可解析文件位置记录（R10） | path, archivePath?, name, ext, sizeBytes, mtime, indexedAt | M4 |
+| `file_locations` | 不可解析文件位置记录（R10） | path, archivePath?, name, ext, sizeBytes, mtime, indexedAt | M4 后续 |
 | `file_index` | 文件索引（R11，FTS5） | path, name, ext, sizeBytes, mtime, parent | M7 |
 | `consent_audit` | 搜索/索引审计日志 | requestId, trigger, scope, granted, reason, startedAt | ✅ M1 建表 |
 
