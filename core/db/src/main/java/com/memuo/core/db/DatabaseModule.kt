@@ -4,6 +4,7 @@ import android.content.Context                            // 导入 Context：�
 import androidx.room.Room                                 // 导入 Room：数据库构建器入口
 import com.memuo.core.db.dao.ChatDao                      // 导入会话 DAO
 import com.memuo.core.db.dao.ConsentAuditDao              // 导入审计 DAO
+import com.memuo.core.db.dao.FileLocationDao              // 导入文件位置 DAO
 import com.memuo.core.db.dao.KbDao                        // 导入知识库 DAO
 import com.memuo.core.db.dao.NoteDao                      // 导入笔记 DAO
 import com.memuo.core.storage.StorageProvider             // 导入存储提供者（决定数据库文件路径）
@@ -48,6 +49,10 @@ object DatabaseModule {                                    // 单例对象：提
     /** 提供 KbDao。 */
     @Provides                                              // 标记为提供依赖
     fun provideKbDao(db: AppDatabase): KbDao = db.kbDao()  // 从数据库取知识库 DAO
+
+    /** 提供 FileLocationDao。 */
+    @Provides                                              // 标记为提供依赖
+    fun provideFileLocationDao(db: AppDatabase): FileLocationDao = db.fileLocationDao()  // 从数据库取文件位置 DAO
 
     /** 提供 ConsentAuditDao。 */
     @Provides                                              // 标记为提供依赖

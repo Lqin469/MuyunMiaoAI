@@ -2,13 +2,15 @@ package com.memuo.core.ingest                            // 声明包名：内�
 
 import android.content.Context                            // 导入 Context：应用上下文
 import android.net.Uri                                    // 导入 Uri：文件统一标识
+import com.tom_roush.pdfbox.pdmodel.PDDocument             // 导入 PDF 文档对象（pdfbox-android）
+import com.tom_roush.pdfbox.text.PDFTextStripper           // 导入 PDF 文本提取器
 import java.io.File                                       // 导入 File：本地文件
 import java.util.zip.ZipFile                              // 导入 ZipFile：DOCX 是 zip 包，用它读 word/document.xml
 
 /**
  * 文档解析器（DocumentParser）—— 把各类文件解析为纯文本（M4 使用）。
- * 当前支持：TXT / MD / DOCX（解 zip 读 document.xml）。
- * PDF 用 pdfbox-android（后续补）；图片走 OCR（后续补）；压缩包走 ArchiveExtractor（后续补）。
+ * 支持：TXT / MD / JSON / LOG / DOCX（解 zip 读 document.xml）/ PDF（pdfbox-android）。
+ * 图片走 OCR（后续补）；压缩包走 ArchiveExtractor。
  */
 object DocumentParser {                                   // 单例对象：解析逻辑
 
@@ -25,7 +27,8 @@ object DocumentParser {                                   // 单例对象：解�
         return when (ext) {                               // 按扩展名分派
             "txt", "md", "json", "log" -> ParsedText(file.readText(), file.name)  // 文本类：直接读
             "docx" -> ParsedText(parseDocx(file), file.name)  // DOCX：解 zip
-            else -> throw UnsupportedFormatException(ext) // 其他：抛异常（PDF/图片/压缩包后续补）
+            "pdf" -> ParsedText(parsePdf(file), file.name)  // PDF：pdfbox 提取
+            else -> throw UnsupportedFormatException(ext) // 其他：抛异常（图片走 OCR，后续补）
         }
     }
 
@@ -43,6 +46,14 @@ object DocumentParser {                                   // 单例对象：解�
             return xml.replace(Regex("<w:p[ >]"), "\n")   // 段落标签换行
                 .replace(Regex("<[^>]+>"), "")            // 去掉所有 XML 标签
                 .trim()                                   // 去首尾空白
+        }
+    }
+
+    /** 解析 PDF：pdfbox-android 提取全文（中文需字体支持，扫描版需 OCR）。 */
+    private fun parsePdf(file: File): String {            // 解析 PDF 方法
+        PDDocument.load(file).use { doc ->                // 加载 PDF 文档（use 自动关闭）
+            val stripper = PDFTextStripper()              // 文本提取器
+            return stripper.getText(doc)                  // 提取全文
         }
     }
 }

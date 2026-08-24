@@ -33,5 +33,8 @@ dependencies {                                         // 本模块依赖列表
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器
 
+    implementation(libs.commons.compress)              // 压缩包解析（TAR/GZ/BZ2/XZ）
+    implementation(libs.pdfbox.android)                // PDF 解析
+
     implementation(libs.kotlinx.coroutines.android)    // 协程
 }

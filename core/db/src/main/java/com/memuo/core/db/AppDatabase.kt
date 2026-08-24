@@ -4,11 +4,13 @@ import androidx.room.Database                             // 导入 Database：R
 import androidx.room.RoomDatabase                         // 导入 RoomDatabase：数据库基类
 import com.memuo.core.db.dao.ChatDao                      // 导入会话 DAO
 import com.memuo.core.db.dao.ConsentAuditDao              // 导入审计 DAO
+import com.memuo.core.db.dao.FileLocationDao              // 导入文件位置 DAO
 import com.memuo.core.db.dao.KbDao                        // 导入知识库 DAO
 import com.memuo.core.db.dao.NoteDao                      // 导入笔记 DAO
 import com.memuo.core.db.entity.ChatMessage               // 导入消息实体
 import com.memuo.core.db.entity.ConsentAuditEntity        // 导入审计实体
 import com.memuo.core.db.entity.Conversation              // 导入会话实体
+import com.memuo.core.db.entity.FileLocation              // 导入文件位置实体
 import com.memuo.core.db.entity.KbChunk                   // 导入分块实体
 import com.memuo.core.db.entity.KbDocument                // 导入文档实体
 import com.memuo.core.db.entity.Note                      // 导入笔记实体
@@ -27,9 +29,10 @@ import com.memuo.core.db.entity.TodoItem                  // 导入待办实体
         ChatMessage::class,                               // 消息表
         KbDocument::class,                                // 知识库文档表
         KbChunk::class,                                   // 知识库分块表
+        FileLocation::class,                              // 文件位置记录表
         ConsentAuditEntity::class,                        // 搜索审计表
     ],
-    version = 2,                                          // 数据库版本号（M4 新增 kb 表，从 1 升到 2）
+    version = 3,                                          // 数据库版本号（M4 收尾新增 file_locations 表，升到 3）
     exportSchema = false,                                 // 不导出 schema（简化；正式发布建议开启）
 )
 abstract class AppDatabase : RoomDatabase() {             // 抽象数据库类（Room 生成实现）
@@ -42,6 +45,9 @@ abstract class AppDatabase : RoomDatabase() {             // 抽象数据库类�
 
     /** 提供知识库 DAO。 */
     abstract fun kbDao(): KbDao                           // 知识库数据访问对象
+
+    /** 提供文件位置 DAO。 */
+    abstract fun fileLocationDao(): FileLocationDao       // 文件位置数据访问对象
 
     /** 提供审计 DAO。 */
     abstract fun consentAuditDao(): ConsentAuditDao       // 审计数据访问对象

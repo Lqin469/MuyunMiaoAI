@@ -146,7 +146,6 @@ class RagService { suspend fun ask(folderId, question): Flow<ChatEvent> }
 |---|---|---|
 | `PrivilegeManager` | core:search | M7 |
 | `ToolCallingBus` / `AiTool` | core:ai:tools | M7 |
-| `ArchiveExtractor` | core:ingest | M4 后续 |
-| `OcrEngine` | core:ingest | M4/M6 |
+| `OcrEngine` | core:ingest | M6 |
 | `ModelRepository` / `ModelImporter` / `HardwareProfile` | core:models | M6 |
 | `MemoryExtractor` / `MemoryStore` | core:ai:memory | M5 |
