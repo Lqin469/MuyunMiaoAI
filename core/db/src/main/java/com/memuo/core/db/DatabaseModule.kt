@@ -11,6 +11,7 @@ import com.memuo.core.db.dao.NoteDao                      // 导入笔记 DAO
 import com.memuo.core.storage.StorageProvider             // 导入存储提供者（决定数据库文件路径）
 import dagger.Module                                      // 导入 Module：Hilt 模块注解
 import dagger.Provides                                    // 导入 Provides：Hilt 提供方法注解
+import dagger.hilt.android.qualifiers.ApplicationContext  // 导入 @ApplicationContext：明确告知 Hilt 此 Context 为应用级
 import dagger.hilt.InstallIn                              // 导入 InstallIn：指定安装组件
 import dagger.hilt.components.SingletonComponent          // 导入 SingletonComponent：应用级单例组件
 import javax.inject.Singleton                             // 导入 Singleton：单例作用域
@@ -27,7 +28,7 @@ object DatabaseModule {                                    // 单例对象：提
     @Provides                                              // 标记为提供依赖
     @Singleton                                             // 单例（全应用共享一个数据库连接）
     fun provideDatabase(                                   // 提供方法
-        context: Context,                                  // 注入应用上下文
+        @ApplicationContext context: Context,             // 显式标注应用级 Context（Hilt 正确绑定所需）
         storage: StorageProvider,                          // 注入存储提供者（决定路径）
     ): AppDatabase {                                       // 返回数据库实例
         storage.ensureDirs()                               // 先确保目录存在（避免建库时目录缺失崩溃）
