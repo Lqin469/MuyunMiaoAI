@@ -37,11 +37,18 @@ object ArchiveExtractor {                               // 单例对象：压缩
      */
     fun extract(archive: File, targetDir: File): List<File> {  // 解压方法
         targetDir.mkdirs()                                // 确保目标目录存在
-        return when (archive.extension.lowercase()) {     // 按扩展名分派
+        val files = when (archive.extension.lowercase()) {  // 按扩展名分派
             "zip" -> extractZip(archive, targetDir)       // ZIP
             "tar", "gz", "tgz", "bz2", "tbz2", "xz", "txz" -> extractTar(archive, targetDir)  // TAR 系
             else -> throw UnsupportedArchiveException(archive.extension)  // 7z/rar：上层记录位置
         }
+        // 压缩比检查（解压后）：防止极小压缩包解出极大内容
+        val total = files.sumOf { it.length() }           // 解压后总大小
+        if (archive.length() > 0 && total.toDouble() / archive.length() > MAX_RATIO) {  // 压缩比超限
+            files.forEach { it.delete() }                 // 清理已解压文件
+            throw IllegalArgumentException("解压炸弹：压缩比超限")  // 抛异常
+        }
+        return files                                        // 返回
     }
 
     /** 解压 ZIP（java.util.zip 内置）。 */

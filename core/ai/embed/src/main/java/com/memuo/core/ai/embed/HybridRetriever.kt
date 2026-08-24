@@ -64,11 +64,18 @@ class HybridRetriever @Inject constructor(               // 构造函数注入
             }
     }
 
-    /** 余弦相似度（两向量点积 / 模长积；已归一化则直接点积）。 */
+    /** 余弦相似度（点积 / 模长积）；除以模长保证对任意向量都正确（不依赖归一化）。 */
     private fun cosine(a: FloatArray, b: FloatArray): Float {  // 余弦相似度
-        var dot = 0f                                      // 点积累加
-        for (i in a.indices) dot += a[i] * b[i]           // 逐维相乘累加
-        return dot                                        // 已归一化，直接返回点积
+        var dot = 0f                                      // 点积
+        var na = 0f                                       // a 模长平方
+        var nb = 0f                                       // b 模长平方
+        for (i in a.indices) {                            // 逐维累加
+            dot += a[i] * b[i]                            // 点积累加
+            na += a[i] * a[i]                             // a 模长平方累加
+            nb += b[i] * b[i]                             // b 模长平方累加
+        }
+        val denom = kotlin.math.sqrt(na) * kotlin.math.sqrt(nb)  // 分母 = |a| * |b|
+        return if (denom > 0f) dot / denom else 0f        // 除模长（防止除零）
     }
 
     /** ByteArray → FloatArray（BLOB 反序列化）。 */

@@ -42,8 +42,7 @@ fun NoteListScreen(                                       // 笔记列表页
         floatingActionButton = {                          // 悬浮按钮（右下角）
             FloatingActionButton(                         // FAB 组件
                 onClick = {                              // 点击：新建笔记并跳转编辑
-                    val id = viewModel.createNote()       // 新建一条空白笔记
-                    onOpenNote(id)                        // 跳转到新笔记的编辑页
+                    viewModel.createNote { id -> onOpenNote(id) }  // 回调式：拿到真实 ID 后再跳转
                 },
             ) { Text("＋") }                             // FAB 文字（加号）
         },

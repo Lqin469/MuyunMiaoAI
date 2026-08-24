@@ -61,20 +61,19 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
         }
     }
 
-    /** 新建一个会话，返回会话 ID。 */
-    fun newConversation(): Long {                        // 新建会话
-        val now = System.currentTimeMillis()             // 时间戳
-        val conv = Conversation(                         // 构造新会话
-            title = "新对话",                            // 默认标题
-            engine = EngineType.CLOUD,                   // 默认云端引擎
-            createdAt = now,                             // 创建时间
-            updatedAt = now,                             // 更新时间
-        )
-        var id = 0L                                      // 保存 ID
+    /** 新建一个会话，创建完成后通过 [onCreated] 回调返回会话 ID。 */
+    fun newConversation(onCreated: (Long) -> Unit) {     // 新建会话（回调式，避免异步 ID 竞态）
         viewModelScope.launch {                          // 协程中写入
-            id = chatDao.upsertConversation(conv)        // 落库拿 ID
+            val now = System.currentTimeMillis()         // 时间戳
+            val conv = Conversation(                     // 构造新会话
+                title = "新对话",                        // 默认标题
+                engine = EngineType.CLOUD,               // 默认云端引擎
+                createdAt = now,                         // 创建时间
+                updatedAt = now,                         // 更新时间
+            )
+            val id = chatDao.upsertConversation(conv)    // 落库拿 ID
+            onCreated(id)                                // 回调返回真实 ID
         }
-        return id                                        // 返回 ID
     }
 
     /** 发送一条用户消息并流式接收 AI 回复。 */

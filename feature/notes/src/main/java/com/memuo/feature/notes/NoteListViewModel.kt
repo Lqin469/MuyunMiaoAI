@@ -32,22 +32,21 @@ class NoteListViewModel @Inject constructor(             // 构造函数注入
     /** 观察单条笔记（编辑页实时加载用）。 */
     fun observeNote(id: Long): Flow<Note?> = noteDao.observeById(id)  // 返回单条笔记的响应式流
 
-    /** 新建一条空白笔记，返回新笔记 ID。 */
-    fun createNote(): Long {                             // 新建笔记方法
-        val now = System.currentTimeMillis()             // 取当前时间戳
-        val note = Note(                                 // 构造新笔记（空白）
-            title = "",                                  // 空标题
-            content = "",                                // 空内容
-            type = NoteType.TEXT,                        // 默认纯文本
-            createdAt = now,                             // 创建时间
-            updatedAt = now,                             // 更新时间
-        )
-        var id = 0L                                      // 保存插入后的 ID
+    /** 新建一条空白笔记，创建完成后通过 [onCreated] 回调返回新笔记 ID。 */
+    fun createNote(onCreated: (Long) -> Unit) {          // 新建笔记（回调式，避免异步 ID 竞态）
         viewModelScope.launch {                          // 协程中执行（IO 操作）
-            id = noteDao.upsert(note)                    // 写入数据库，拿到新 ID
+            val now = System.currentTimeMillis()         // 取当前时间戳
+            val note = Note(                             // 构造新笔记（空白）
+                title = "",                              // 空标题
+                content = "",                            // 空内容
+                type = NoteType.TEXT,                    // 默认纯文本
+                createdAt = now,                         // 创建时间
+                updatedAt = now,                         // 更新时间
+            )
+            val id = noteDao.upsert(note)                // 写入数据库，拿到新 ID
             bridge.emitChanged(id, NoteChanged.Action.CREATED)  // 发布"已创建"事件（供知识库订阅）
+            onCreated(id)                                // 回调返回新 ID（此时才真正拿到）
         }
-        return id                                        // 返回 ID（注意：异步写入，ID 在协程里才赋值，调用方应仅用于导航）
     }
 
     /** 软删除一条笔记。 */

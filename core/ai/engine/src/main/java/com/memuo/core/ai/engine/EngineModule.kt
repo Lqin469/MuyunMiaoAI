@@ -20,8 +20,7 @@ object EngineModule {                                      // 单例对象：提
     @Singleton                                             // 单例（复用连接池）
     fun provideOkHttpClient(): OkHttpClient =              // 提供方法
         OkHttpClient.Builder()                             // 构造 OkHttp
-            .build()                                       // 用默认配置（超时/连接池等）
-            .also { }                                      // 占位（后续可加拦截器/日志）
+            .build()                                       // 用默认配置（超时/连接池等；后续可加拦截器/日志）
 
     /** 提供 ChatEngine（当前绑定云端实现；M6 起按设置切换本地/云端）。 */
     @Provides                                              // 标记为提供依赖
