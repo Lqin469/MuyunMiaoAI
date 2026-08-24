@@ -4,8 +4,8 @@ import android.os.Bundle                                 // 导入 Bundle：Acti
 import androidx.activity.ComponentActivity                // 导入 ComponentActivity：Compose 基础 Activity
 import androidx.activity.compose.setContent               // 导入 setContent：把 Compose 界面挂载到 Activity
 import androidx.compose.foundation.layout.padding          // 导入 padding：外边距
-import androidx.compose.material3.BottomNavigation        // 导入 BottomNavigation：底部导航栏
-import androidx.compose.material3.BottomNavigationItem    // 导入 BottomNavigationItem：底部导航项
+import androidx.compose.material3.NavigationBar           // 导入 NavigationBar：底部导航栏（Material3）
+import androidx.compose.material3.NavigationBarItem       // 导入 NavigationBarItem：底部导航项（Material3）
 import androidx.compose.material3.MaterialTheme          // 导入 MaterialTheme：Material3 主题
 import androidx.compose.material3.Scaffold                // 导入 Scaffold：页面脚手架（含 bottomBar 槽位）
 import androidx.compose.material3.Text                    // 导入 Text：文本
@@ -48,8 +48,8 @@ fun NoteApp() {                                          // 应用根组件
 
         Scaffold(                                        // 页面脚手架（含底部导航）
             bottomBar = {                                // 底部导航栏
-                BottomNavigation {                       // 底部导航容器
-                    BottomNavigationItem(                // 笔记 tab
+                NavigationBar {                          // 底部导航容器（Material3）
+                    NavigationBarItem(                   // 笔记 tab
                         selected = selectedTab == "note",  // 选中态
                         onClick = {                       // 点击切换
                             selectedTab = "note"          // 更新选中
@@ -61,7 +61,7 @@ fun NoteApp() {                                          // 应用根组件
                         icon = { Text("📝") },            // 图标（文字）
                         label = { Text("笔记") },          // 标签
                     )
-                    BottomNavigationItem(                // 对话 tab
+                    NavigationBarItem(                   // 对话 tab
                         selected = selectedTab == "chat",  // 选中态
                         onClick = {                       // 点击切换
                             selectedTab = "chat"          // 更新选中
@@ -73,7 +73,7 @@ fun NoteApp() {                                          // 应用根组件
                         icon = { Text("💬") },            // 图标
                         label = { Text("对话") },          // 标签
                     )
-                    BottomNavigationItem(                // 设置 tab
+                    NavigationBarItem(                   // 设置 tab
                         selected = selectedTab == "settings",  // 选中态
                         onClick = {                       // 点击切换
                             selectedTab = "settings"      // 更新选中
