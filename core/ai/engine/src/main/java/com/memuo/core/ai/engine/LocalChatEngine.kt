@@ -18,7 +18,7 @@ import javax.inject.Singleton                              // 导入 Singleton�
  * 桩行为：调用即返回"未集成 MNN"的提示事件，避免静默失败。
  */
 @Singleton                                               // 单例
-class LocalChatEngine @Inject constructor() {            // 构造函数注入（无参数）
+class LocalChatEngine @Inject constructor() : ChatEngine {  // 构造函数注入（无参数），实现 ChatEngine 接口
     override val type: EngineType = EngineType.LOCAL      // 引擎类型 = 本地
 
     override fun streamChat(                               // 流式对话
