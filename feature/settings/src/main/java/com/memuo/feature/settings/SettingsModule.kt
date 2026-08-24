@@ -1,6 +1,7 @@
 package com.memuo.feature.settings                         // 声明包名：设置业务模块
 
 import com.memuo.core.ai.engine.CloudConfigProvider       // 导入云端配置提供者接口
+import com.memuo.core.ai.engine.EngineSettings             // 导入引擎设置接口
 import com.memuo.core.search.consent.SearchSettings        // 导入搜索设置接口（core:search 契约）
 import dagger.Binds                                        // 导入 Binds：Hilt 接口绑定注解
 import dagger.Module                                      // 导入 Module：Hilt 模块注解
@@ -30,4 +31,11 @@ abstract class SettingsModule {                            // 抽象模块类（
     abstract fun bindCloudConfigProvider(                  // 抽象绑定方法
         repo: CloudConfigRepository,                       // 参数是具体实现
     ): CloudConfigProvider                                 // 返回类型是接口
+
+    /** 绑定：EngineSettings 接口 → SettingsRepository 实现（单例）。 */
+    @Binds                                                 // 接口绑定注解
+    @Singleton                                             // 单例作用域
+    abstract fun bindEngineSettings(                       // 抽象绑定方法
+        repo: SettingsRepository,                          // 参数是具体实现
+    ): EngineSettings                                      // 返回类型是接口
 }

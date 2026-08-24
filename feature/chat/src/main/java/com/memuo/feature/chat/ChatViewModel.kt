@@ -67,12 +67,24 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
             val now = System.currentTimeMillis()         // 时间戳
             val conv = Conversation(                     // 构造新会话
                 title = "新对话",                        // 默认标题
-                engine = EngineType.CLOUD,               // 默认云端引擎
+                engine = engine.type,                    // 用当前生效引擎类型（EngineRouter 动态返回）
                 createdAt = now,                         // 创建时间
                 updatedAt = now,                         // 更新时间
             )
             val id = chatDao.upsertConversation(conv)    // 落库拿 ID
             onCreated(id)                                // 回调返回真实 ID
+        }
+    }
+
+    /** 确保存在一个可用会话：有则返回最新，无则新建（供对话 tab 进入时调用，避免异步竞态）。 */
+    fun ensureConversation(onReady: (Long) -> Unit) {    // 确保会话存在
+        viewModelScope.launch {                          // 协程中执行
+            val convs = chatDao.observeConversations().first()  // 取一次真实会话列表（阻塞等首个值）
+            if (convs.isEmpty()) {                       // 无会话
+                newConversation(onReady)                 // 新建并回调 ID
+            } else {                                     // 有会话
+                onReady(convs.first().id)                // 用最新会话 ID 回调
+            }
         }
     }
 

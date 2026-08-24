@@ -22,8 +22,8 @@ object EngineModule {                                      // 单例对象：提
         OkHttpClient.Builder()                             // 构造 OkHttp
             .build()                                       // 用默认配置（超时/连接池等；后续可加拦截器/日志）
 
-    /** 提供 ChatEngine（当前绑定云端实现；M6 起按设置切换本地/云端）。 */
+    /** 提供 ChatEngine（M6 起经 EngineRouter 按用户设置动态切换本地/云端）。 */
     @Provides                                              // 标记为提供依赖
     @Singleton                                             // 单例
-    fun provideChatEngine(cloud: CloudChatEngine): ChatEngine = cloud  // 云端实现
+    fun provideChatEngine(router: EngineRouter): ChatEngine = router  // 路由器实现（内部按设置路由）
 }
