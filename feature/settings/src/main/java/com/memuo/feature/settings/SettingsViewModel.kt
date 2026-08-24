@@ -100,12 +100,12 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
     fun downloadModel() {                                 // 下载模型
         viewModelScope.launch {                          // 协程中下载
             _downloadProgress.value = "开始下载模型…"    // 初始提示
-            val ok = downloader.download { done, total -> // 下载（进度回调）
+            val err = downloader.download { done, total -> // 下载（进度回调）
                 _downloadProgress.value = "下载中 $done/$total 个文件…"  // 更新进度
             }
             _hasLocalModel.value = importer.hasLocalModel()  // 更新就绪状态
             _downloadProgress.value = ""                  // 清空进度
-            _message.value = if (ok) "模型下载完成，可切换到本地引擎" else "下载失败，请检查网络后重试"  // 提示
+            _message.value = if (err == null) "模型下载完成，可切换到本地引擎" else "下载失败：$err"  // 具体错误提示
         }
     }
 

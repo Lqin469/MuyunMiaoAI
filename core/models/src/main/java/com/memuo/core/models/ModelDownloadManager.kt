@@ -12,7 +12,7 @@ import javax.inject.Singleton                              // 导入 Singleton
 
 /**
  * 模型下载管理器（ModelDownloadManager）—— 从 ModelScope 下载 Qwen3.5-0.8B-MNN 到 modelsDir()/llm/（R2）。
- * MVP：顺序下载必需文件 + 文件级进度；断点续传与 sha256 校验后续增强。
+ * ModelScope resolve URL 会 302 重定向到 CDN（需 UA/Referer）；逐文件下载 + 文件级进度 + 具体错误返回。
  */
 @Singleton                                               // 单例
 class ModelDownloadManager @Inject constructor(          // 构造函数注入
@@ -21,6 +21,7 @@ class ModelDownloadManager @Inject constructor(          // 构造函数注入
 ) {
     companion object {                                    // 常量
         private const val BASE = "https://modelscope.cn/models/MNN/Qwen3.5-0.8B-MNN/resolve/master"  // 下载基地址
+        private const val UA = "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36"  // 浏览器 UA
 
         /** 必需下载文件（与导入必需清单一致，含视觉模型）。 */
         val FILES = listOf(                               // 文件清单
@@ -32,29 +33,34 @@ class ModelDownloadManager @Inject constructor(          // 构造函数注入
     /**
      * 下载模型到 modelsDir()/llm/。
      * @param onProgress 进度回调（已下载文件数, 总文件数）
-     * @return 全部下载成功返回 true
+     * @return null 表示全部成功；非 null 为具体错误信息
      */
-    suspend fun download(onProgress: (Int, Int) -> Unit): Boolean = withContext(Dispatchers.IO) {  // IO 线程
+    suspend fun download(onProgress: (Int, Int) -> Unit): String? = withContext(Dispatchers.IO) {  // IO 线程
         val target = File(storage.modelsDir(), "llm").apply { mkdirs() }  // 目标目录
         FILES.forEachIndexed { i, name ->                 // 逐个下载
             onProgress(i, FILES.size)                     // 报告进度
-            if (!downloadFile("$BASE/$name", File(target, name))) return@withContext false  // 失败则中止
+            val err = downloadFile("$BASE/$name", File(target, name))  // 下载单文件
+            if (err != null) return@withContext "下载 $name 失败：$err"  // 有错误则中止并返回
         }
         onProgress(FILES.size, FILES.size)                // 完成
-        true                                              // 成功
+        null                                              // 成功
     }
 
-    /** 下载单个文件到目标路径。 */
-    private fun downloadFile(url: String, target: File): Boolean {  // 单文件下载
+    /** 下载单个文件到目标路径；返回 null 表示成功，非 null 为错误描述。 */
+    private fun downloadFile(url: String, target: File): String? {  // 单文件下载
         return runCatching {                              // 捕获异常
-            val req = Request.Builder().url(url).build()  // 构造请求
+            val req = Request.Builder()                   // 构造请求
+                .url(url)                                 // URL
+                .header("User-Agent", UA)                 // 浏览器 UA（CDN 校验）
+                .header("Referer", "https://modelscope.cn/")  // 来源（CDN 校验）
+                .build()                                  // 构建
             okHttp.newCall(req).execute().use { resp ->   // 同步执行
-                if (!resp.isSuccessful) return@runCatching false  // HTTP 错误
+                if (!resp.isSuccessful) return@runCatching "HTTP ${resp.code}"  // HTTP 错误
                 resp.body?.byteStream()?.use { input ->   // 读响应流
                     target.outputStream().use { output -> input.copyTo(output) }  // 写本地
                 }
             }
-            target.exists() && target.length() > 0        // 校验非空
-        }.getOrDefault(false)                             // 异常返回 false
+            if (target.exists() && target.length() > 0) null else "文件为空"  // 校验非空
+        }.getOrElse { it.message ?: "网络错误" }           // 异常信息
     }
 }
