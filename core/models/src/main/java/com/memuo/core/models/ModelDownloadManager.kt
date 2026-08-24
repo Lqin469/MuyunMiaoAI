@@ -46,18 +46,34 @@ class ModelDownloadManager @Inject constructor(          // 构造函数注入
         null                                              // 成功
     }
 
-    /** 下载单个文件到目标路径；返回 null 表示成功，非 null 为错误描述。 */
-    private fun downloadFile(url: String, target: File): String? {  // 单文件下载
+    /** 下载单个文件（带断点续传 + 重试）；返回 null 表示成功，非 null 为错误描述。 */
+    private fun downloadFile(url: String, target: File): String? {  // 单文件下载（带重试）
+        var lastErr = "未知错误"                          // 最后一次错误
+        repeat(3) {                                       // 最多重试 3 次
+            val err = downloadOnce(url, target)           // 单次下载
+            if (err == null) return null                  // 成功
+            lastErr = err                                 // 记录错误
+        }
+        return lastErr                                    // 重试耗尽返回错误
+    }
+
+    /** 单次下载（断点续传）。 */
+    private fun downloadOnce(url: String, target: File): String? {  // 单次下载
         return runCatching {                              // 捕获异常
+            val existing = if (target.exists()) target.length() else 0L  // 已下载字节数（断点）
             val req = Request.Builder()                   // 构造请求
                 .url(url)                                 // URL
                 .header("User-Agent", UA)                 // 浏览器 UA（CDN 校验）
                 .header("Referer", "https://modelscope.cn/")  // 来源（CDN 校验）
+                .apply {                                  // 断点续传
+                    if (existing > 0) header("Range", "bytes=$existing-")  // 从已下载字节继续
+                }
                 .build()                                  // 构建
             okHttp.newCall(req).execute().use { resp ->   // 同步执行
-                if (!resp.isSuccessful) return@runCatching "HTTP ${resp.code}"  // HTTP 错误
+                val resume = resp.code == 206             // 206 = 部分内容（续传成功）
+                if (!resp.isSuccessful && !resume) return@runCatching "HTTP ${resp.code}"  // 非成功响应
                 resp.body?.byteStream()?.use { input ->   // 读响应流
-                    target.outputStream().use { output -> input.copyTo(output) }  // 写本地
+                    target.outputStream(resume).use { output -> input.copyTo(output) }  // 续传追加 / 首次覆盖
                 }
             }
             if (target.exists() && target.length() > 0) null else "文件为空"  // 校验非空

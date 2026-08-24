@@ -16,7 +16,7 @@ import javax.inject.Singleton                             // 导入 Singleton
 @InstallIn(SingletonComponent::class)                    // 单例作用域
 object ModelModule {                                     // 模型装配
 
-    /** 提供模型下载专用 OkHttpClient（长读超时，适配 470M 大文件下载）。 */
+    /** 提供模型下载专用 OkHttpClient（长超时 + 自动重试，适配 470M 大文件下载）。 */
     @Provides                                           // 提供依赖
     @Singleton                                          // 单例
     @Named("modelDownload")                              // 限定符（区分云端引擎的 OkHttp）
@@ -24,5 +24,7 @@ object ModelModule {                                     // 模型装配
         OkHttpClient.Builder()                           // 构造
             .connectTimeout(30, TimeUnit.SECONDS)        // 连接超时 30s
             .readTimeout(300, TimeUnit.SECONDS)          // 读超时 5min（大文件）
+            .writeTimeout(300, TimeUnit.SECONDS)         // 写超时 5min
+            .retryOnConnectionFailure(true)              // 连接失败自动重试
             .build()                                     // 构建
 }
