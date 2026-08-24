@@ -48,7 +48,7 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }            # WorkManager
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" } # 加密存储
 
-pdfbox-android = { group = "org.apache.pdfbox", name = "pdfbox-android", version.ref = "pdfboxAndroid" }   # PDF 解析
+pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfboxAndroid" }   # PDF 解析（group 是 com.tom-roush，常见误区）
 commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }  # 压缩包
 junrar = { group = "com.github.junrar", name = "junrar", version.ref = "junrar" }                          # RAR 解压
 
