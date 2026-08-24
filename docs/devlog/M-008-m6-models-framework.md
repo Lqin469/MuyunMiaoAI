@@ -81,3 +81,25 @@ core/models/build.gradle.kts（+hilt+kapt 插件）、app/build.gradle.kts（+co
 - 真实 MNN 集成在沙箱无法做，桩保证架构但无推理结果，CI 只验证编译不验证推理；
 - 切本地引擎前必须保证模型已下载（UI 应阻止"未下载就切"），否则 MNN 加载失败；
 - `@Inject constructor()`（无参）容易被遗漏，Hilt @Binds 才会要（Hilt 编译期检查）。
+
+## 7. 增量（同日第二轮）：CI 修复 + 投喂路由接线
+
+**CI #17 报错与修复**
+- 报错：`LocalChatEngine.kt:22 'type' overrides nothing` / `:24 'streamChat' overrides nothing`；
+- 根因：类声明漏写 `: ChatEngine`（`class LocalChatEngine @Inject constructor() {`），接口未实现导致 override 失效；
+- 修复：补 `: ChatEngine`（commit `17157ba`，CI `32680341265` success）。
+
+**R8/R9/R10 完整投喂路由（KnowledgeRepository.ingestFile）**
+- 压缩包（zip/tar/gz/tgz/bz2/tbz2/xz/txz）→ `ArchiveExtractor.extract` 解压到 `indexDir/extract/<name>-<size>/`，逐文件路由入库；嵌套压缩包**不递归**（防连环炸弹），仅位置记录；
+- 图片（png/jpg/jpeg/webp/bmp/gif）→ `OcrEngine.recognize`（M6 桩返回占位文本）；
+- 文本/PDF/DOCX → `DocumentParser.parse`；
+- 7z/RAR 及一切不可解析（含解压失败、条目不可解析）→ `FileLocationDao.upsert` 位置记录（R10 兜底，仅元数据不存内容）；
+- 解压临时产物入库后 `deleteRecursively()` 清理（分块已在 DB）；
+- 新增 `IngestModule`（@Binds：OcrEngine → MnnOcrEngine）。
+
+**bge 嵌入桩（core:ai:embed/MnnEmbeddingProvider）**
+- 实现 EmbeddingProvider，dim=512（bge-small-zh）；embed() 抛 IllegalStateException 快速失败；
+- 未注册进 EmbedModule（默认仍是 SimpleHashEmbeddingProvider），MNN 落地后改 @Binds 即切换；
+- 注意：换 bge 后维度 256→512，旧分块向量需重建（索引重建策略 M6 后续补）。
+
+**依赖变更**：core:ingest 新增 `implementation(project(":core:storage"))`（解压临时目录用 StorageProvider.indexDir）。
