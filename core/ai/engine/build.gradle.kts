@@ -27,6 +27,7 @@ android {                                              // Android 构建配置�
 
 dependencies {                                         // 本模块依赖列表
     implementation(project(":core:db"))                // 依赖数据库模块（ChatMessage/EngineType 实体）
+    implementation(project(":core:storage"))           // 依赖存储模块（本地模型目录 StorageProvider）
 
     implementation(libs.okhttp)                        // OkHttp（云端 SSE 流式请求）
 
