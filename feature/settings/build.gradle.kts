@@ -37,6 +37,8 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:storage"))           // 依赖存储模块（数据库配置页 StorageProvider）
     implementation(project(":core:ingest"))            // 依赖入库模块（知识库投喂 KnowledgeRepository）
 
+    implementation(libs.androidx.documentfile)         // DocumentFile（SAF 目录遍历，知识库投喂）
+
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础
     implementation(libs.compose.material3)             // Material3 组件（开关/按钮/输入框/Scaffold）

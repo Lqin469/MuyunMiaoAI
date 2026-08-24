@@ -9,12 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth    // 导入 fillMaxWidth
 import androidx.compose.foundation.layout.padding          // 导入 padding
 import androidx.compose.foundation.lazy.LazyColumn         // 导入 LazyColumn
 import androidx.compose.foundation.lazy.items              // 导入 items
-import androidx.compose.material.icons.Icons               // 导入 Icons
-import androidx.compose.material.icons.filled.CreateNewFolder  // 导入 CreateNewFolder：文件夹图标
-import androidx.compose.material.icons.filled.NoteAdd     // 导入 NoteAdd：单文件图标
 import androidx.compose.material3.Card                    // 导入 Card
 import androidx.compose.material3.ExperimentalMaterial3Api // 导入 ExperimentalMaterial3Api
-import androidx.compose.material3.Icon                    // 导入 Icon
 import androidx.compose.material3.MaterialTheme           // 导入 MaterialTheme
 import androidx.compose.material3.Scaffold                // 导入 Scaffold
 import androidx.compose.material3.Text                    // 导入 Text
@@ -67,12 +63,10 @@ fun KnowledgeScreen(                                      // 知识库页
                 title = { Text("知识库") },               // 标题
                 actions = {                              // 右侧操作
                     TextButton(onClick = onPickFile) {    // 单文件投喂
-                        Icon(Icons.Filled.NoteAdd, contentDescription = "投喂文件")
-                        Text(" 文件")
+                        Text("文件")
                     }
                     TextButton(onClick = onPickFolder) {  // 文件夹投喂
-                        Icon(Icons.Filled.CreateNewFolder, contentDescription = "投喂文件夹")
-                        Text(" 文件夹")
+                        Text("文件夹")
                     }
                 },
             )
