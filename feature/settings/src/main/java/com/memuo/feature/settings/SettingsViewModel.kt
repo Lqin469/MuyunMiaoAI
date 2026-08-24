@@ -9,6 +9,7 @@ import com.memuo.core.ai.engine.EngineRouter               // 导入引擎路由
 import com.memuo.core.ai.engine.EngineSettings             // 导入引擎设置接口
 import com.memuo.core.db.entity.EngineType                 // 导入引擎类型枚举
 import com.memuo.core.models.ModelImporter                 // 导入模型导入器
+import com.memuo.core.models.ModelDownloadManager          // 导入模型下载器
 import dagger.hilt.android.lifecycle.HiltViewModel         // 导入 HiltViewModel：Hilt 提供 ViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext  // 导入 ApplicationContext：应用级上下文
 import kotlinx.coroutines.flow.MutableStateFlow            // 导入可变状态流
@@ -27,6 +28,7 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
     private val engineSettings: EngineSettings,          // 注入引擎设置（类型状态流）
     private val router: EngineRouter,                    // 注入引擎路由器（切换 + 模型检测）
     private val importer: ModelImporter,                 // 注入模型导入器（复制模型到 app 目录）
+    private val downloader: ModelDownloadManager,        // 注入模型下载器（ModelScope 下载）
     private val cloudRepo: CloudConfigRepository,        // 注入云端配置仓库
 ) : ViewModel() {                                        // 继承 ViewModel
 
@@ -36,6 +38,10 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
     /** 本地模型是否就绪。 */
     private val _hasLocalModel = MutableStateFlow(importer.hasLocalModel())  // 初始检测一次
     val hasLocalModel: StateFlow<Boolean> = _hasLocalModel.asStateFlow()  // 只读暴露
+
+    /** 模型下载进度提示（下载中显示"3/8"）。 */
+    private val _downloadProgress = MutableStateFlow("")  // 下载进度
+    val downloadProgress: StateFlow<String> = _downloadProgress.asStateFlow()  // 只读暴露
 
     /** 当前云端配置（用于回显输入框）。 */
     private val _cloud = MutableStateFlow(CloudConfig(baseUrl = "", apiKey = "", model = ""))  // 初始空
@@ -87,6 +93,19 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
             val ok = importer.importFromUri(context, uri)  // 检测并复制
             _hasLocalModel.value = ok                     // 更新就绪状态
             _message.value = if (ok) "模型导入成功，可切换到本地引擎" else "导入失败：所选文件夹不是有效模型（需含 config.json + llm.mnn + llm.mnn.weight）"  // 提示
+        }
+    }
+
+    /** 从 ModelScope 下载 Qwen3.5-0.8B-MNN 模型（约 550M，含视觉模型）。 */
+    fun downloadModel() {                                 // 下载模型
+        viewModelScope.launch {                          // 协程中下载
+            _downloadProgress.value = "开始下载模型…"    // 初始提示
+            val ok = downloader.download { done, total -> // 下载（进度回调）
+                _downloadProgress.value = "下载中 $done/$total 个文件…"  // 更新进度
+            }
+            _hasLocalModel.value = importer.hasLocalModel()  // 更新就绪状态
+            _downloadProgress.value = ""                  // 清空进度
+            _message.value = if (ok) "模型下载完成，可切换到本地引擎" else "下载失败，请检查网络后重试"  // 提示
         }
     }
 

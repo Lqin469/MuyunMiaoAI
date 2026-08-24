@@ -225,11 +225,21 @@ private fun AppDrawer(                                    // 侧边菜单
 
             // 导入模型始终显示（避免"切本地需模型、导入需切本地"的死循环）
             DrawerItem("导入模型") { onImportModel() }     // 导入模型（打开 SAF 选择器）
+            DrawerItem("下载模型（ModelScope）") { viewModel.downloadModel() }  // 在线下载模型
             Text(                                         // 模型状态
                 "本地模型：${if (hasLocalModel) "✅ 已就绪" else "❌ 未就绪"}",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
+            val progress by viewModel.downloadProgress.collectAsState()  // 下载进度
+            if (progress.isNotBlank()) {                  // 下载中
+                Text(                                     // 进度提示
+                    progress,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
             // 云端 API 配置：仅云端模式显示
             if (engineType == EngineType.CLOUD) {         // 云端引擎
                 DrawerItem("云端 API 配置") { onNavigate("cloud") }  // 云端配置
