@@ -88,7 +88,7 @@ private fun ListItem(text: String) {                      // 列表项渲染
     Text(                                                 // 列表项文本
         text = "•  $text",                               // 圆点前缀
         style = MaterialTheme.typography.bodyMedium,      // 正文样式
-        modifier = Modifier.padding(vertical = 2.dp, start = 4.dp),  // 缩进
+        modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp),  // 缩进
     )
 }
 
@@ -130,8 +130,10 @@ private fun Paragraph(text: String) {                     // 段落渲染
     )
 }
 
-/** 构建行内富文本：识别 **加粗** 与 `行内代码`。 */
+/** 构建行内富文本：识别 **加粗** 与行内代码。 */
+@Composable                                               // 需访问 MaterialTheme 色板，故标记 Composable
 private fun buildInline(text: String) = buildAnnotatedString {  // 行内富文本
+    val codeBg = MaterialTheme.colorScheme.surfaceVariant  // 行内代码底色
     val regex = Regex("(\\*\\*[^*]+\\*\\*|`[^`]+`)")      // 匹配加粗 / 行内代码
     var last = 0                                          // 上次匹配结束位置
     for (m in regex.findAll(text)) {                      // 遍历匹配
@@ -142,7 +144,7 @@ private fun buildInline(text: String) = buildAnnotatedString {  // 行内富文�
                 append(token.removeSurrounding("**"))     // 追加去掉 ** 的文本
             }
             token.startsWith("`") -> withStyle(SpanStyle(  // 行内代码
-                background = MaterialTheme.colorScheme.surfaceVariant,  // 灰底
+                background = codeBg,                      // 灰底
                 fontFamily = FontFamily.Monospace,        // 等宽字体
             )) {
                 append(token.removeSurrounding("`"))      // 追加去掉 ` 的文本
