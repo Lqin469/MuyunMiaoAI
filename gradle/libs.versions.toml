@@ -24,6 +24,7 @@ junrar = "7.5.5"                                        # RAR4 解压
 shizuku = "13.1.5"                                      # Shizuku（adb/root 提权）
 libsu = "5.2.2"                                         # libsu（root shell）
 securityCrypto = "1.1.0"                                # 安全加密存储（API Key）
+documentfile = "1.0.1"                                  # DocumentFile（SAF 目录遍历）
 
 [libraries]                                             # 依赖坐标区：库别名 → 坐标
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }              # AndroidX 核心库
@@ -47,6 +48,7 @@ datastore-preferences = { group = "androidx.datastore", name = "datastore-prefer
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }                       # OkHttp（云端 API/模型下载）
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }            # WorkManager
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" } # 加密存储
+androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" } # SAF 目录遍历
 
 pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfboxAndroid" }   # PDF 解析（group 是 com.tom-roush，常见误区）
 commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }  # 压缩包

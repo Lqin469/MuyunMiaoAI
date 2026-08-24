@@ -1,5 +1,7 @@
 package com.memuo.feature.settings                         // 声明包名：设置业务模块
 
+import android.content.Context                            // 导入 Context：SAF 目录读取
+import android.net.Uri                                    // 导入 Uri：SAF 目录标识
 import androidx.lifecycle.ViewModel                       // 导入 ViewModel：UI 数据持有者
 import androidx.lifecycle.viewModelScope                  // 导入 viewModelScope：ViewModel 协程作用域
 import com.memuo.core.ai.engine.CloudConfig                // 导入云端配置数据类
@@ -8,6 +10,7 @@ import com.memuo.core.ai.engine.EngineSettings             // 导入引擎设置
 import com.memuo.core.db.entity.EngineType                 // 导入引擎类型枚举
 import com.memuo.core.models.ModelImporter                 // 导入模型导入器
 import dagger.hilt.android.lifecycle.HiltViewModel         // 导入 HiltViewModel：Hilt 提供 ViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext  // 导入 ApplicationContext：应用级上下文
 import kotlinx.coroutines.flow.MutableStateFlow            // 导入可变状态流
 import kotlinx.coroutines.flow.StateFlow                  // 导入只读状态流
 import kotlinx.coroutines.flow.asStateFlow                // 导入 asStateFlow：转只读
@@ -16,10 +19,11 @@ import java.io.File                                        // 导入 File：导�
 import javax.inject.Inject                                 // 导入 Inject：构造函数注入
 
 /**
- * 设置 ViewModel —— 引擎切换、模型导入、云端配置（M-010）。
+ * 设置 ViewModel —— 引擎切换、模型导入（SAF/路径）、云端配置（M-010/M-011）。
  */
 @HiltViewModel                                           // 注解：由 Hilt 创建并注入依赖
 class SettingsViewModel @Inject constructor(             // 构造函数注入
+    @ApplicationContext private val context: Context,    // 注入应用上下文（SAF 目录读取）
     private val engineSettings: EngineSettings,          // 注入引擎设置（类型状态流）
     private val router: EngineRouter,                    // 注入引擎路由器（切换 + 模型检测）
     private val importer: ModelImporter,                 // 注入模型导入器（复制模型到 app 目录）
@@ -65,7 +69,7 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
     }
 
     /** 从设备目录绝对路径导入 MNN 模型到 app 私有目录。 */
-    fun importModel(path: String) {                       // 导入模型
+    fun importModel(path: String) {                       // 导入模型（绝对路径）
         if (path.isBlank()) {                             // 空路径
             _message.value = "请填写模型目录路径"
             return
@@ -73,7 +77,16 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
         viewModelScope.launch {                          // 协程中复制（大文件走 IO）
             val ok = importer.importMnnToAppDir(File(path))  // 复制模型
             _hasLocalModel.value = ok                     // 更新就绪状态
-            _message.value = if (ok) "模型导入成功，可切换到本地引擎" else "导入失败：目录无效（需含 config.json）"  // 提示
+            _message.value = if (ok) "模型导入成功，可切换到本地引擎" else "导入失败：目录无效（需含 config.json + llm.mnn + llm.mnn.weight）"  // 提示
+        }
+    }
+
+    /** 从 SAF 文件夹选择器选中的目录导入模型（检测 + 复制）。 */
+    fun importModelFromUri(uri: Uri) {                    // 导入模型（SAF 目录）
+        viewModelScope.launch {                          // 协程中复制
+            val ok = importer.importFromUri(context, uri)  // 检测并复制
+            _hasLocalModel.value = ok                     // 更新就绪状态
+            _message.value = if (ok) "模型导入成功，可切换到本地引擎" else "导入失败：所选文件夹不是有效模型（需含 config.json + llm.mnn + llm.mnn.weight）"  // 提示
         }
     }
 

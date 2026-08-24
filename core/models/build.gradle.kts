@@ -28,6 +28,8 @@ android {                                              // Android 构建配置�
 dependencies {                                         // 本模块依赖列表
     implementation(project(":core:storage"))           // 依赖存储模块（模型导入目标目录 StorageProvider）
 
+    implementation(libs.androidx.documentfile)         // DocumentFile（SAF 目录遍历复制）
+
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器
     implementation(libs.kotlinx.coroutines.android)    // 协程
