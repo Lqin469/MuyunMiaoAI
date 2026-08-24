@@ -148,11 +148,24 @@ class MemoryExtractor { suspend fun extract(messages: List<ChatMessage>): List<M
 class MemoryStore { suspend fun remember(messages): Int; suspend fun search(keyword, limit): List<KbMemory> }  // 嵌入落库 + 关键词检索
 ```
 
+## 模型契约（core:models · M6 已定）
+
+```kotlin
+// core:models
+enum class ModelKind { LLM, EMBEDDING, OCR, VISION_LLM }
+enum class ModelSource { CATALOG, LOCAL_IMPORT }
+data class ModelItem(id, name, kind, quant, source, downloadUrl?, sha256?, sizeBytes, minRamMb, minStorageMb, cpuNote, gpuNote)
+data class HardwareProfile(totalRamMb, availRamMb, totalStorageMb, cpuCores, abi, gpu)
+class ModelRepository { val catalog: List<ModelItem>; fun probeHardware(): HardwareProfile; fun canRun(item, hw): RunStatus }
+class ModelImporter { fun importFromPath(path: String): ModelItem? }   // 识别 MNN_DIR / GGUF
+
+// core:ingest
+interface OcrEngine { suspend fun recognize(file: File): String }    // 可换 MNN-PaddleOCR / ML Kit / Tesseract
+```
+
 ## 预留接口（后续阶段补录）
 
 | 接口 | 归属 | 阶段 |
 |---|---|---|
 | `PrivilegeManager` | core:search | M7 |
 | `ToolCallingBus` / `AiTool` | core:ai:tools | M7 |
-| `OcrEngine` | core:ingest | M6 |
-| `ModelRepository` / `ModelImporter` / `HardwareProfile` | core:models | M6 |

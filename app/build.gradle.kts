@@ -59,6 +59,7 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:ai:embed"))          // 嵌入模块（EmbeddingProvider/混合检索）
     implementation(project(":core:ai:memory"))         // 记忆模块（MemoryExtractor/MemoryStore）
     implementation(project(":core:ingest"))            // 入库模块（解析/分块/RAG 问答）
+    implementation(project(":core:models"))            // 模型管理模块（下载/导入/硬件评估）
     implementation(project(":core:db"))                // 数据库模块（Room 全库）
     implementation(project(":core:storage"))           // 存储抽象模块（StorageProvider）
 }
