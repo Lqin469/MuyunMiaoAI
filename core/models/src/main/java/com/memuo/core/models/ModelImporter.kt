@@ -25,44 +25,77 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
 ) {
 
     /** 检测目录是否为合法 MNN 模型目录（含 config.json + llm.mnn + llm.mnn.weight）。 */
-    fun detectMnnModel(dir: File): Boolean =             // 模型检测
+    fun detectMnnModel(dir: File): Boolean =             // 模型检测（单目录）
         File(dir, "config.json").exists() &&             // config.json（createLLM 入口）
             File(dir, "llm.mnn").exists() &&             // 模型结构
             File(dir, "llm.mnn.weight").exists()         // 模型权重
+
+    /** 校验模型完整性：三项齐全 + 权重文件大小合理（>100MB，防复制不完整）。 */
+    private fun verifyModel(dir: File): Boolean {        // 完整性校验
+        if (!detectMnnModel(dir)) return false           // 三项齐全
+        return File(dir, "llm.mnn.weight").length() > 100L * 1024 * 1024  // 权重 >100MB（Qwen 0.8B 约 449M）
+    }
+
+    /** 递归查找含 config.json + llm.mnn + llm.mnn.weight 的目录（最多 5 层，兼容 HF 缓存嵌套）。 */
+    private fun findModelDir(dir: File, depth: Int = 0): File? {  // 递归查找模型目录
+        if (depth > 5) return null                        // 防过深
+        if (detectMnnModel(dir)) return dir               // 当前目录即模型目录
+        dir.listFiles()?.forEach { child ->               // 遍历子项
+            if (child.isDirectory) {                      // 子目录
+                findModelDir(child, depth + 1)?.let { return it }  // 递归
+            }
+        }
+        return null                                       // 未找到
+    }
 
     /** 本地模型是否已就绪（modelsDir()/llm/config.json 存在）。 */
     fun hasLocalModel(): Boolean =                        // 模型就绪检测
         File(storage.modelsDir(), "llm/config.json").exists()  // config.json 存在即就绪
 
     /**
-     * 从绝对路径目录导入 MNN 模型：先检测，再复制到 modelsDir()/llm/。
+     * 从绝对路径目录导入 MNN 模型：递归定位模型目录，再复制到 modelsDir()/llm/。
      * @return 检测失败返回 false；复制成功返回 true
      */
     suspend fun importMnnToAppDir(sourceDir: File): Boolean = withContext(Dispatchers.IO) {  // IO 线程复制
-        if (!detectMnnModel(sourceDir)) return@withContext false  // 检测失败
+        val modelDir = findModelDir(sourceDir) ?: return@withContext false  // 递归定位（含外层目录）
         val target = File(storage.modelsDir(), "llm")     // 目标目录
         if (target.exists()) target.deleteRecursively()   // 清掉旧模型（幂等）
         target.mkdirs()                                   // 建目录
-        sourceDir.copyRecursively(target, overwrite = true)  // 复制
-        File(target, "config.json").exists()              // 校验结果
+        modelDir.copyRecursively(target, overwrite = true)  // 复制
+        verifyModel(target)                            // 校验结果（三项齐全）
     }
 
     /**
      * 从 SAF 目录 Uri 导入模型（系统文件夹选择器选中后调用）：
-     * 先检测是否为合法模型目录，再递归复制到 modelsDir()/llm/。
+     * 递归定位模型目录（兼容"选外层目录 / HF 缓存嵌套"），再复制到 modelsDir()/llm/。
      * @return 检测失败或复制失败返回 false
      */
     suspend fun importFromUri(context: Context, uri: Uri): Boolean = withContext(Dispatchers.IO) {  // IO 线程
         val root = DocumentFile.fromTreeUri(context, uri) ?: return@withContext false  // 取目录根
-        // 检测：目录内必须含 config.json + llm.mnn + llm.mnn.weight
-        val names = root.listFiles().mapNotNull { it.name }.toSet()  // 收集文件名
-        val valid = "config.json" in names && "llm.mnn" in names && "llm.mnn.weight" in names  // 三项齐全
-        if (!valid) return@withContext false             // 不是合法模型目录
+        val modelDir = findModelDirInTree(root) ?: return@withContext false  // 递归定位模型目录
         val target = File(storage.modelsDir(), "llm")     // 目标目录
         if (target.exists()) target.deleteRecursively()   // 清旧
         target.mkdirs()                                   // 建目录
-        val ok = copyDocumentTree(context, root, target)  // 递归复制
-        ok && File(target, "config.json").exists()        // 校验
+        val ok = copyDocumentTree(context, modelDir, target)  // 递归复制模型目录
+        ok && verifyModel(target)                      // 校验（三项齐全）
+    }
+
+    /** 判断 DocumentFile 是否为合法模型目录（含 config.json + llm.mnn + llm.mnn.weight）。 */
+    private fun isModelDir(doc: DocumentFile): Boolean {  // SAF 模型目录判断
+        val names = doc.listFiles().mapNotNull { it.name }.toSet()  // 收集文件名
+        return "config.json" in names && "llm.mnn" in names && "llm.mnn.weight" in names  // 三项齐全
+    }
+
+    /** 递归查找 SAF 目录树中的模型目录（最多 5 层，兼容 HF 缓存 `snapshots/_no_sha_` 嵌套）。 */
+    private fun findModelDirInTree(doc: DocumentFile, depth: Int = 0): DocumentFile? {  // 递归查找
+        if (depth > 5) return null                        // 防过深
+        if (isModelDir(doc)) return doc                   // 当前即模型目录
+        doc.listFiles().forEach { child ->                // 遍历子项
+            if (child.isDirectory) {                      // 子目录
+                findModelDirInTree(child, depth + 1)?.let { return it }  // 递归
+            }
+        }
+        return null                                       // 未找到
     }
 
     /** 递归复制 SAF 目录树到本地目录（DocumentFile → File）。 */

@@ -50,8 +50,16 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
         system: String?                                  // 系统提示词（MVP 暂忽略）
     ): Flow<ChatEvent> = callbackFlow {                  // 用 callbackFlow 桥接 JNI 回调
         val ptr = ensureLoaded()                        // 确保模型加载
-        if (ptr == 0L) {                                // 模型未就绪
-            trySend(ChatEvent.Delta("⚠️ 本地模型未就绪：请在设置中导入模型到「模型目录/llm/」（含 config.json）。\n"))  // 提示
+        if (ptr == 0L) {                                // 模型未就绪/加载失败
+            val dir = modelDir()                        // 模型目录
+            val config = File(dir, "config.json")       // 配置
+            val weight = File(dir, "llm.mnn.weight")    // 权重
+            val msg = when {                            // 按状态给具体提示
+                !config.exists() -> "⚠️ 本地模型未就绪：请点左上角 ☰ →「导入模型」，选择 Qwen 模型文件夹（含 config.json + llm.mnn + llm.mnn.weight）。\n"
+                !weight.exists() -> "⚠️ 模型文件不完整：缺少 llm.mnn.weight，请重新导入完整模型。\n"
+                else -> "⚠️ 本地模型加载失败：模型可能不完整或损坏，请重新导入（llm.mnn.weight 约 449M）。\n"
+            }
+            trySend(ChatEvent.Delta(msg))               // 提示
             trySend(ChatEvent.Done("no_model"))         // 结束
             close()                                     // 关闭流
             return@callbackFlow                          // 返回

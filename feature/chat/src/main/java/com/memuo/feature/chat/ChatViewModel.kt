@@ -108,8 +108,12 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
                         _streamText.value = sb.toString() // 实时刷新流式文本
                     }
                     is ChatEvent.Done -> {               // 结束
-                        if (sb.isNotEmpty()) {           // 有回复则落库
-                            chatDao.insertMessage(ChatMessage(convId = convId, role = "assistant", content = sb.toString(), ts = System.currentTimeMillis()))  // 写 AI 回复
+                        // 有增量文本 → 用累积内容；无内容但有原因（错误/提示）→ 显示原因，避免"发送无反应"
+                        val finalText = sb.toString().ifBlank {
+                            event.reason.takeIf { it.isNotBlank() && it != "stop" && it != "empty" }.orEmpty()
+                        }
+                        if (finalText.isNotBlank()) {     // 有最终文本则落库
+                            chatDao.insertMessage(ChatMessage(convId = convId, role = "assistant", content = finalText, ts = System.currentTimeMillis()))  // 写 AI 回复（或错误提示）
                         }
                         _streaming.value = false         // 退出流式状态
                         _streamText.value = ""           // 清空
