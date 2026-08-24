@@ -33,7 +33,8 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:search"))            // 依赖搜索模块（实现其 SearchSettings 接口）
     implementation(project(":core:ai:engine"))         // 依赖引擎模块（实现 EngineSettings/CloudConfigProvider 接口）
     implementation(project(":core:models"))            // 依赖模型模块（模型导入 ModelImporter）
-    implementation(project(":core:db"))                // 依赖数据库模块（EngineType 枚举）
+    implementation(project(":core:db"))                // 依赖数据库模块（EngineType/MemoryDao 等）
+    implementation(project(":core:storage"))           // 依赖存储模块（数据库配置页 StorageProvider）
 
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础
