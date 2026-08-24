@@ -8,16 +8,16 @@ import javax.inject.Singleton                             // 导入 Singleton：
 
 /**
  * Hilt 装配模块：把 EmbeddingProvider 接口绑定到实现。
- * M4 用 SimpleHashEmbeddingProvider（本地占位）；M6 换成 bge（MNN 本地）时只需改这里。
+ * M6 用 bge（MNN 本地）；模型未就绪时 MnnEmbeddingProvider 内部降级为 SimpleHash。
  */
 @Module                                                    // 声明 Hilt 模块
 @InstallIn(SingletonComponent::class)                      // 安装到应用级单例组件
 abstract class EmbedModule {                               // 抽象模块类（@Binds 需要抽象）
 
-    /** 绑定：EmbeddingProvider 接口 → SimpleHashEmbeddingProvider 实现（单例）。 */
+    /** 绑定：EmbeddingProvider 接口 → MnnEmbeddingProvider（bge，MNN 本地，单例）。 */
     @Binds                                                 // 接口绑定注解
     @Singleton                                             // 单例作用域
     abstract fun bindEmbeddingProvider(                    // 抽象绑定方法
-        impl: SimpleHashEmbeddingProvider,                 // 参数是具体实现
+        impl: MnnEmbeddingProvider,                        // 参数是 bge 实现
     ): EmbeddingProvider                                   // 返回类型是接口
 }
