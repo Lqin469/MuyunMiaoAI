@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Column          // 导入 Column：纵
 import androidx.compose.foundation.layout.Row             // 导入 Row：横向布局
 import androidx.compose.foundation.layout.fillMaxSize     // 导入 fillMaxSize：铺满
 import androidx.compose.foundation.layout.fillMaxWidth    // 导入 fillMaxWidth：占满宽度
+import androidx.compose.foundation.layout.imePadding      // 导入 imePadding：软键盘避让
+import androidx.compose.foundation.layout.navigationBarsPadding  // 导入 navigationBarsPadding：底部导航栏避让
 import androidx.compose.foundation.layout.padding          // 导入 padding：外边距
 import androidx.compose.foundation.lazy.LazyColumn         // 导入 LazyColumn：消息列表
 import androidx.compose.foundation.lazy.items              // 导入 items：列表项扩展
@@ -82,7 +84,11 @@ fun ChatScreen(                                           // 对话页
                 }
             }
             Row(                                          // 底部输入区（横向）
-                modifier = Modifier.fillMaxWidth().padding(12.dp),  // 占满宽度 + 边距
+                modifier = Modifier                         // 修饰
+                    .fillMaxWidth()                        // 占满宽度
+                    .padding(12.dp)                        // 边距
+                    .imePadding()                          // 软键盘弹出时输入框上移（消息列表不被顶）
+                    .navigationBarsPadding(),              // 避开底部导航栏（手势条）
                 verticalAlignment = Alignment.CenterVertically,     // 垂直居中
             ) {
                 OutlinedTextField(                        // 输入框

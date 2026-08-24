@@ -52,8 +52,8 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
         val ptr = ensureLoaded()                        // 确保模型加载
         if (ptr == 0L) {                                // 模型未就绪/加载失败
             val dir = modelDir()                        // 模型目录
-            // 必需文件清单（Qwen3.5 多模态 load 需要 tokenizer.txt）
-            val required = listOf("config.json", "llm.mnn", "llm.mnn.weight", "tokenizer.txt", "llm.mnn.json")
+            // 必需文件清单（Qwen3.5 多模态 is_visual:true 需视觉文件 visual.mnn/visual.mnn.weight）
+            val required = listOf("config.json", "llm.mnn", "llm.mnn.weight", "tokenizer.txt", "llm.mnn.json", "visual.mnn", "visual.mnn.weight")
             val missing = required.filterNot { File(dir, it).exists() }  // 缺失的文件
             val weight = File(dir, "llm.mnn.weight")    // 权重文件
             val msg = when {                            // 按状态给具体提示

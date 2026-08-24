@@ -4,6 +4,7 @@ import android.os.Bundle                                 // 导入 Bundle：Acti
 import androidx.activity.ComponentActivity                // 导入 ComponentActivity：Compose 基础 Activity
 import androidx.activity.compose.rememberLauncherForActivityResult  // 导入 rememberLauncherForActivityResult：SAF 选择器
 import androidx.activity.compose.setContent               // 导入 setContent：把 Compose 界面挂载到 Activity
+import androidx.activity.enableEdgeToEdge                 // 导入 enableEdgeToEdge：边到边显示（配合 imePadding 处理键盘）
 import androidx.activity.result.contract.ActivityResultContracts  // 导入 ActivityResultContracts：系统契约
 import androidx.compose.animation.animateColorAsState     // 导入 animateColorAsState：颜色动画
 import androidx.compose.foundation.background             // 导入 background：背景
@@ -68,6 +69,7 @@ import kotlinx.coroutines.launch                            // 导入 launch：�
 class MainActivity : ComponentActivity() {               // 应用唯一 Activity（单 Activity 架构）
     override fun onCreate(savedInstanceState: Bundle?) { // 生命周期回调：Activity 创建时调用
         super.onCreate(savedInstanceState)               // 调用父类初始化
+        enableEdgeToEdge()                               // 边到边显示（配合 imePadding 处理软键盘不顶页面）
         setContent { NoteApp() }                         // 渲染应用界面
     }
 }

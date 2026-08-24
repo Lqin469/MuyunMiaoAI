@@ -25,9 +25,10 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
 ) {
 
     /** 检测目录是否为合法 MNN 模型目录（含 config.json + llm.mnn + llm.mnn.weight）。 */
-    /** MNN 模型必需文件（Qwen3.5 多模态需 tokenizer.txt，否则 load 失败）。 */
+    /** MNN 模型必需文件（Qwen3.5 多模态 is_visual:true 需视觉文件，否则 load 失败）。 */
     private val REQUIRED_FILES = listOf(                  // 必需文件清单
-        "config.json", "llm.mnn", "llm.mnn.weight", "tokenizer.txt",
+        "config.json", "llm.mnn", "llm.mnn.weight", "tokenizer.txt",  // 文本 LLM 核心
+        "visual.mnn", "visual.mnn.weight",               // 多模态视觉模型（is_visual:true 时 load 必需）
     )
 
     fun detectMnnModel(dir: File): Boolean =             // 模型检测（单目录）
