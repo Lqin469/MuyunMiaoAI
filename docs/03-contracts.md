@@ -125,14 +125,28 @@ interface CloudConfigProvider { suspend fun current(): CloudConfig? }   // 由 f
 class CloudChatEngine : ChatEngine    // OpenAI 兼容 SSE（本地 MNN 引擎 M6 补）
 ```
 
+## 嵌入与检索契约（core:ai:embed / core:ingest · M4 已定）
+
+```kotlin
+// core:ai:embed
+interface EmbeddingProvider { val dim: Int; suspend fun embed(texts: List<String>): List<FloatArray> }
+class SimpleHashEmbeddingProvider : EmbeddingProvider   // 本地占位（M6 换 bge）
+class HybridRetriever { suspend fun retrieve(folderId, query, topK): List<RetrievedChunk> }  // 余弦+关键词 RRF
+
+// core:ingest
+object Chunker { fun split(text, maxLen=400, overlap=80): List<String> }
+object DocumentParser { fun parse(file): ParsedText }    // TXT/MD/DOCX（PDF/压缩包/OCR 后续）
+class KnowledgeRepository { suspend fun ingestNote(noteId); fun observeNoteBridge(scope, bridge) }  // R7
+class RagService { suspend fun ask(folderId, question): Flow<ChatEvent> }
+```
+
 ## 预留接口（后续阶段补录）
 
 | 接口 | 归属 | 阶段 |
 |---|---|---|
-| `EmbeddingProvider` | core:ai:embed | M4 |
 | `PrivilegeManager` | core:search | M7 |
 | `ToolCallingBus` / `AiTool` | core:ai:tools | M7 |
-| `DocumentParser` / `ArchiveExtractor` | core:ingest | M4 |
-| `OcrEngine` | core:ingest | M4 |
+| `ArchiveExtractor` | core:ingest | M4 后续 |
+| `OcrEngine` | core:ingest | M4/M6 |
 | `ModelRepository` / `ModelImporter` / `HardwareProfile` | core:models | M6 |
 | `MemoryExtractor` / `MemoryStore` | core:ai:memory | M5 |

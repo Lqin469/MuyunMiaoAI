@@ -29,7 +29,8 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:search"))            // 依赖搜索模块（实现其 SearchSettings 接口）
     implementation(project(":core:ai:engine"))         // 依赖引擎模块（实现 CloudConfigProvider 接口）
 
-    implementation(libs.datastore.preferences)         // DataStore 偏好存储（持久化设置）
+    implementation(libs.datastore.preferences)         // DataStore 偏好存储（非敏感设置）
+    implementation(libs.security.crypto)               // 安全加密存储（apiKey 用 Keystore 加密）
 
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器

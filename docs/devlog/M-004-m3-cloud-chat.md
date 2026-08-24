@@ -8,12 +8,14 @@
 ## 1. 目标与范围
 
 **目标**
+
 - 定义 `ChatEngine` 接口（架构不变式：所有 AI 对话能力只通过本接口，本地/云端可互换）；
 - 实现云端引擎：`CloudApiClient`（OkHttp SSE 流式，OpenAI 兼容）+ `CloudChatEngine`；
 - 会话/消息落库（`ChatDao`）；
 - 对话 UI（`ChatScreen` 流式渲染）+ 云端配置仓库（`CloudConfigRepository`）。
 
 **不做**
+
 - 不实现本地 MNN 引擎（M6）；
 - 不实现 API Key 加密存储（当前 DataStore 明文，M3+ 改用 EncryptedSharedPreferences）；
 - 不实现会话侧栏/标题自动生成（后续）。
@@ -67,11 +69,13 @@ app/build.gradle.kts（+feature:chat +core:ai:engine）
 ## 6. 接手指引
 
 下一步（M4）：知识库投喂（压缩包/文档解析/混合检索）：
+
 1. `core:ingest`：DocumentParser（TXT/MD/PDF/DOCX）+ ArchiveExtractor（ZIP/TAR/7z/RAR）+ Chunker 分块 + IngestWorker；
 2. `core:ai:embed`：EmbeddingProvider 双轨 + HybridRetriever（余弦+FTS5 RRF）；
 3. 消费 M2 的 NoteBridge 事件，实现 R7「笔记自动进知识库」。
 
 踩坑点：
+
 - SSE 解析用 `line.startsWith("data:")` 过滤，`[DONE]` 结束；`data:` 后可能有空格需 trim；
 - `callbackFlow` 里发 Done 后必须 `close()`，否则流不结束；
 - 发送按钮在 `streaming` 时禁用，避免并发写库。

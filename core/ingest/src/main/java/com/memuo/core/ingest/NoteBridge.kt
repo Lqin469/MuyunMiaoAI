@@ -1,4 +1,4 @@
-package com.memuo.feature.notes                         // 声明包名：笔记业务模块
+package com.memuo.core.ingest                            // 声明包名：内容入库模块（NoteBridge 上移到 core，供各层订阅）
 
 import kotlinx.coroutines.flow.MutableSharedFlow          // 导入 MutableSharedFlow：可发射事件的热流
 import kotlinx.coroutines.flow.SharedFlow                 // 导入 SharedFlow：只读事件流
@@ -20,9 +20,8 @@ data class NoteChanged(                                   // 笔记变更事件�
 }
 
 /**
- * 笔记事件总线（NoteBridge）—— 架构上的"桥"：笔记的增删改在这里发布事件，
- * 后续 M4 的知识库 IngestWorker 订阅这些事件，实现「备忘录内容自动被 AI 读取」（R7）。
- * 本类只负责发事件、不关心谁消费（解耦）。
+ * 笔记事件总线（NoteBridge）—— 领域事件桥（core 层，供 feature:notes 发布、core:ingest 订阅）。
+ * 笔记的增删改在这里发事件，知识库模块订阅它实现「备忘录内容自动被 AI 读取」（R7）。
  */
 @Singleton                                               // 单例：全应用共享一个事件总线
 class NoteBridge @Inject constructor() {                 // 构造函数注入（无参数）

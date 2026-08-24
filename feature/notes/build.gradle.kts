@@ -30,6 +30,7 @@ android {                                              // Android 构建配置�
 
 dependencies {                                         // 本模块依赖列表
     implementation(project(":core:db"))                // 依赖数据库模块（NoteDao 读写笔记）
+    implementation(project(":core:ingest"))            // 依赖入库模块（NoteBridge 事件总线在 core 层）
 
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础

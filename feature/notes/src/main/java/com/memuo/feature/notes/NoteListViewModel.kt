@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope                  // 导入 viewModelSco
 import com.memuo.core.db.dao.NoteDao                       // 导入笔记 DAO
 import com.memuo.core.db.entity.Note                       // 导入笔记实体
 import com.memuo.core.db.entity.NoteType                   // 导入笔记类型枚举
+import com.memuo.core.ingest.NoteBridge                    // 导入笔记事件总线（core 层）
+import com.memuo.core.ingest.NoteChanged                   // 导入笔记变更事件
 import dagger.hilt.android.lifecycle.HiltViewModel         // 导入 HiltViewModel：Hilt 提供 ViewModel
 import kotlinx.coroutines.flow.Flow                       // 导入 Flow：响应式数据流
 import kotlinx.coroutines.flow.SharingStarted              // 导入 SharingStarted：状态流启动策略
