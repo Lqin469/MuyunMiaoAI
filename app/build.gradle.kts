@@ -38,6 +38,7 @@ dependencies {                                         // 本模块依赖列表
     implementation(platform(libs.compose.bom))         // 引入 Compose BOM：统一 Compose 库版本
     implementation(libs.compose.ui)                    // Compose UI 基础
     implementation(libs.compose.material3)             // Material3 组件（按钮/进度条等）
+    implementation(libs.compose.material.icons.core)   // Material 基础图标（汉堡菜单 Icons.Menu）
     implementation(libs.compose.ui.tooling.preview)    // 布局预览（AS 设计视图）
     implementation(libs.androidx.activity.compose)     // Activity 的 Compose 集成（setContent）
     implementation(libs.lifecycle.runtime.ktx)         // Lifecycle 运行时

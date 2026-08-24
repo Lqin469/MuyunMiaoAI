@@ -32,6 +32,7 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }            # Compose 版本清单（BOM）
 compose-ui = { group = "androidx.compose.ui", name = "ui" }                                                # Compose UI 基础
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }                           # Material3 组件库
+compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }          # Material 基础图标（Icons.Menu 等）
 compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }                # 预览支持（AS 预览面板）
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }  # 导航
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }      # Lifecycle 运行时
