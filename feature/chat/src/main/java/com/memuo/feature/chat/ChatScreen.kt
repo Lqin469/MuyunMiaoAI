@@ -67,7 +67,10 @@ fun ChatScreen(                                           // 对话页
         },
     ) { innerPadding ->                                   // 内容区
         Column(                                           // 纵向布局
-            modifier = Modifier.fillMaxSize().padding(innerPadding),  // 铺满 + 内边距
+            modifier = Modifier                           // 修饰
+                .fillMaxSize()                           // 铺满
+                .padding(innerPadding)                   // 避开顶部栏
+                .imePadding(),                           // 键盘弹出时整体上移（消息列表随之压缩，不被遮挡）
         ) {
             LazyColumn(                                   // 消息列表（占满剩余空间）
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp),  // 权重 1 占满 + 左右留白
@@ -87,7 +90,6 @@ fun ChatScreen(                                           // 对话页
                 modifier = Modifier                         // 修饰
                     .fillMaxWidth()                        // 占满宽度
                     .padding(12.dp)                        // 边距
-                    .imePadding()                          // 软键盘弹出时输入框上移（消息列表不被顶）
                     .navigationBarsPadding(),              // 避开底部导航栏（手势条）
                 verticalAlignment = Alignment.CenterVertically,     // 垂直居中
             ) {
