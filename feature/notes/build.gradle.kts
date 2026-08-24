@@ -36,6 +36,7 @@ dependencies {                                         // 本模块依赖列表
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础
     implementation(libs.compose.material3)             // Material3 组件（卡片/输入框/Scaffold）
+    implementation(libs.compose.material.icons.core)   // Material 基础图标（新建/返回箭头）
 
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器
