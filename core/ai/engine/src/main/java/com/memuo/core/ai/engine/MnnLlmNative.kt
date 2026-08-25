@@ -25,6 +25,9 @@ object MnnLlmNative {                                     // 单例对象：JNI 
     /** 释放模型实例。 */
     external fun nativeRelease(ptr: Long)                 // 释放 native 资源
 
+    /** 获取最近一次加载失败的具体错误（MNN 内部日志；成功加载后为空串）。 */
+    external fun nativeGetLoadError(): String             // 加载错误诊断
+
     /**
      * 增量回调（DeltaCallback）—— native 层逐段调用 onDelta 推送生成文本。
      * 用普通类（非 interface）便于 JNI 的 GetMethodID 稳定查找到 onDelta。

@@ -71,7 +71,13 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
             runCatching { MnnLlmNative.nativeInit(dir.absolutePath) }.getOrDefault(0L)  // 初始化
         }
         if (nativePtr == 0L) {
-            lastLoadError = "模型加载失败：文件齐全但 MNN 初始化出错，可能是 config.json 与权重不匹配，或模型文件损坏。请使用 MNN 官方导出的 Qwen 模型。"  // 记录失败原因
+            // 读取 MNN 内部具体错误（tokenizer/结构/权重失败点），拼到提示
+            val detail = runCatching { MnnLlmNative.nativeGetLoadError() }.getOrDefault("")  // native 错误日志
+            lastLoadError = if (detail.isNotBlank()) {   // 有具体错误
+                "模型加载失败：$detail"                  // 显示 MNN 原始错误
+            } else {
+                "模型加载失败：文件齐全但 MNN 初始化出错，可能是 config.json 与权重不匹配，或模型文件损坏。请使用 MNN 官方导出的 Qwen 模型。"  // 兜底
+            }
         } else {
             lastLoadError = null                         // 加载成功，清空错误
         }

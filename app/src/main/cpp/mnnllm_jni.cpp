@@ -83,8 +83,12 @@ private:
 
 extern "C" {                                              // C 链接（JNI 要求）
 
+/** 全局缓存：最近一次加载失败的具体错误（MNN getLog() 输出）。 */
+static std::string g_lastLoadError;                       // 加载错误缓存
+
 /**
  * nativeInit —— 加载模型，返回 Llm 实例的原生指针（0 表示失败）。
+ * 失败时把 MNN 内部错误日志存入 g_lastLoadError（供 nativeGetLoadError 读取）。
  * @param modelDir 模型目录（含 config.json）
  */
 JNIEXPORT jlong JNICALL                                   // JNI 导出
@@ -96,16 +100,30 @@ Java_com_memuo_core_ai_engine_MnnLlmNative_nativeInit(    // 方法全名（包.
 
     Llm* llm = Llm::createLLM(configPath);                // 创建 Llm 实例
     if (llm == nullptr) {                                 // 创建失败
+        g_lastLoadError = "createLLM failed: config.json 解析失败或路径无效";  // 记录错误
         LOGE("createLLM failed: %s", configPath.c_str()); // 记录错误
         return 0;                                         // 返回 0
     }
     if (!llm->load()) {                                   // 加载模型失败
-        LOGE("llm load failed: %s", configPath.c_str());  // 记录错误
+        g_lastLoadError = llm->getLog();                  // 捕获 MNN 内部具体错误（需 LLM_LOG_TO_STRING 编译）
+        if (g_lastLoadError.empty()) g_lastLoadError = "load 失败（无详细日志）";  // 兜底
+        LOGE("llm load failed: %s", g_lastLoadError.c_str());  // 记录错误
         Llm::destroy(llm);                                // 销毁实例
         return 0;                                         // 返回 0
     }
+    g_lastLoadError.clear();                              // 清空错误
     LOGI("llm loaded: %s", configPath.c_str());           // 加载成功
     return reinterpret_cast<jlong>(llm);                  // 返回原生指针
+}
+
+/**
+ * nativeGetLoadError —— 返回最近一次加载失败的具体错误（供 Kotlin 展示诊断）。
+ * @return 错误日志字符串（成功加载后为空串）
+ */
+JNIEXPORT jstring JNICALL                                // JNI 导出
+Java_com_memuo_core_ai_engine_MnnLlmNative_nativeGetLoadError(  // 方法全名
+    JNIEnv* env, jobject) {                              // 参数
+    return env->NewStringUTF(g_lastLoadError.c_str());    // 返回错误字符串
 }
 
 /**
