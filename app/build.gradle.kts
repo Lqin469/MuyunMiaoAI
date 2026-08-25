@@ -50,6 +50,9 @@ dependencies {                                         // 本模块依赖列表
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器（编译期生成注入代码）
 
+    // ---- Shizuku（Manifest 直接引用 ShizukuProvider，必须显式依赖）----
+    implementation(libs.shizuku.provider)              // ShizukuProvider（Manifest 注册的提权接入点）
+
     // ---- 模块装配（依赖方向：feature → core → 基础设施）----
     implementation(project(":feature:notes"))          // 笔记业务模块（常规备忘录）
     implementation(project(":feature:chat"))           // 对话业务模块（AI 对话）
