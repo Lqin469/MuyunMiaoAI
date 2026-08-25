@@ -108,7 +108,7 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
     }
 
     companion object {                                    // 常量
-        /** 模型下载地址（ModelScope 官方 Qwen3.5-0.8B-MNN，用户自行浏览器下载）。 */
-        const val MODEL_URL = "https://modelscope.cn/models/MNN/Qwen3.5-0.8B-MNN"  // 模型主页
+        /** 模型下载地址（ModelScope 官方 Qwen3.5-2B-MNN，用户自行浏览器下载）。 */
+        const val MODEL_URL = "https://modelscope.cn/models/MNN/Qwen3.5-2B-MNN"  // 2B 模型主页
     }
 }
