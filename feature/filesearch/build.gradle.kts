@@ -30,7 +30,8 @@ android {                                              // Android 构建配置�
 }
 
 dependencies {                                         // 本模块依赖列表
-    implementation(project(":core:search"))            // 依赖搜索能力模块（许可闸门/进度契约）
+    implementation(project(":core:search"))            // 依赖搜索能力模块（许可闸门/索引/提权/检索）
+    implementation(project(":core:storage"))           // 依赖存储模块（应用私有目录范围）
 
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope                  // 导入 viewModelSco
 import com.memuo.core.ai.engine.ChatEngine                 // 导入对话引擎接口
 import com.memuo.core.ai.engine.ChatEvent                  // 导入对话事件
 import com.memuo.core.ai.memory.MemoryStore                // 导入记忆仓库（M5 每 N 轮提炼）
+import com.memuo.core.ai.tools.ToolCallingBus              // 导入 AI 工具总线（M7 search_file）
 import com.memuo.core.db.dao.ChatDao                       // 导入会话 DAO
 import com.memuo.core.db.entity.ChatMessage                // 导入消息实体
 import com.memuo.core.db.entity.Conversation               // 导入会话实体
@@ -18,14 +19,16 @@ import kotlinx.coroutines.launch                           // 导入 launch：�
 import javax.inject.Inject                                 // 导入 Inject：构造函数注入
 
 /**
- * 对话 ViewModel —— AI 对话的核心逻辑（M3）。
- * 发消息 → 写库（用户消息）→ 调引擎流式接收 → 累积增量 → 结束落库（AI 回复）。
+ * 对话 ViewModel —— AI 对话的核心逻辑（M3 + M7 工具调用）。
+ * 发消息 → 写库（用户消息）→ 调引擎流式接收 → 累积增量 → 结束落库（AI 回复）
+ * → 解析回复中的工具调用标记 [[tool:args]] → 经 ToolCallingBus 执行 → 结果追加为消息。
  */
 @HiltViewModel                                           // 注解：由 Hilt 创建并注入依赖
 class ChatViewModel @Inject constructor(                 // 构造函数注入
     private val chatDao: ChatDao,                        // 注入会话 DAO
     private val engine: ChatEngine,                      // 注入对话引擎（当前为云端实现）
     private val memoryStore: MemoryStore,                // 注入记忆仓库（M5 提炼）
+    private val toolBus: ToolCallingBus,                 // 注入工具总线（M7 文件检索工具）
 ) : ViewModel() {                                        // 继承 ViewModel
 
     /** 会话列表状态流（用于会话侧栏/列表页）。 */
@@ -109,7 +112,7 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
             _streamText.value = ""                       // 清空流式文本
             val sb = StringBuilder()                     // 累积 AI 回复
 
-            engine.streamChat(history, system = null).collect { event ->  // 流式收集事件
+            engine.streamChat(history, system = toolBus.describeForLlm()).collect { event ->  // 流式收集（注入工具声明）
                 when (event) {                          // 分发事件
                     is ChatEvent.Delta -> {              // 增量文本
                         sb.append(event.text)            // 累积
@@ -117,18 +120,42 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
                     }
                     is ChatEvent.Done -> {               // 结束
                         // 有增量文本 → 用累积内容；无内容但有原因（错误/提示）→ 显示原因，避免"发送无反应"
-                        val finalText = sb.toString().ifBlank {
+                        val rawText = sb.toString()      // 原始回复（可能含工具标记）
+                        val finalText = rawText.ifBlank {
                             event.reason.takeIf { it.isNotBlank() && it != "stop" && it != "empty" }.orEmpty()
                         }
                         if (finalText.isNotBlank()) {     // 有最终文本则落库
-                            chatDao.insertMessage(ChatMessage(convId = convId, role = "assistant", content = finalText, ts = System.currentTimeMillis()))  // 写 AI 回复（或错误提示）
+                            // 把工具调用标记（[[name:args]]）从展示文本中移除（结果以独立消息追加）
+                            val cleaned = finalText.replace(Regex("\\[\\[[a-z_]+:.*?]]"), "（已执行设备检索）")  // 标记替换为占位
+                            chatDao.insertMessage(ChatMessage(convId = convId, role = "assistant", content = cleaned, ts = System.currentTimeMillis()))  // 写 AI 回复
                         }
                         _streaming.value = false         // 退出流式状态
                         _streamText.value = ""           // 清空
+                        handleToolCalls(finalText)       // 执行回复中的工具调用（M7）
                         maybeRemember(history)           // 每 N 轮触发记忆提炼（M5）
                     }
                 }
             }
+        }
+    }
+
+    /** 解析 AI 回复中的工具调用标记并执行，结果追加为一条消息（M7 文件检索工具）。 */
+    private suspend fun handleToolCalls(text: String) {   // 工具调用处理
+        val calls = toolBus.extractCalls(text)            // 提取 [[name:args]] 标记
+        if (calls.isEmpty()) return                       // 无标记则返回
+        val results = calls.mapNotNull { (name, args) ->  // 逐个执行
+            val result = toolBus.dispatch(name, args)     // 分发执行
+            if (result.contains("\"error\"")) null else "工具「$name」结果：$result"  // 失败丢弃、成功格式化
+        }
+        if (results.isNotEmpty()) {                       // 有结果
+            chatDao.insertMessage(                        // 结果追加为消息
+                ChatMessage(
+                    convId = convId,
+                    role = "assistant",
+                    content = "🔍 已执行设备检索：\n" + results.joinToString("\n"),  // 结果内容
+                    ts = System.currentTimeMillis(),
+                )
+            )
         }
     }
 

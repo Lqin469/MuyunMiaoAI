@@ -16,6 +16,10 @@ interface FileLocationDao {                                // 文件位置数据
     @Insert(onConflict = OnConflictStrategy.REPLACE)       // 插入，冲突替换
     suspend fun upsert(loc: FileLocation)                  // 写入位置记录
 
+    /** 批量插入或更新位置记录（全盘索引批量落库用）。 */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)       // 批量插入，冲突替换
+    suspend fun upsertAll(locs: List<FileLocation>)        // 批量写入
+
     /** 按文件名/路径关键词检索位置记录（AI 问答"文件在哪"用）。 */
     @Query("SELECT * FROM file_locations WHERE name LIKE '%' || :keyword || '%' OR path LIKE '%' || :keyword || '%' LIMIT :limit")  // SQL：模糊匹配
     suspend fun search(keyword: String, limit: Int = 20): List<FileLocation>  // 返回命中的位置记录

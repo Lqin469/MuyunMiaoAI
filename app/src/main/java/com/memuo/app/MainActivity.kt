@@ -55,6 +55,8 @@ import com.memuo.core.db.entity.EngineType                  // 导入引擎类�
 import com.memuo.feature.chat.ChatListScreen               // 导入会话列表页
 import com.memuo.feature.chat.ChatScreen                    // 导入对话页
 import com.memuo.feature.chat.ChatViewModel                 // 导入对话 ViewModel
+import com.memuo.feature.filesearch.FilesearchScreen        // 导入文件检索页
+import com.memuo.feature.filesearch.FilesearchViewModel     // 导入文件检索 ViewModel
 import com.memuo.feature.notes.NoteEditScreen               // 导入笔记编辑页
 import com.memuo.feature.notes.NoteListScreen               // 导入笔记列表页
 import com.memuo.feature.notes.TodoListScreen               // 导入待办清单页
@@ -159,6 +161,10 @@ fun NoteApp() {                                          // 应用根组件
                     composable("memory") { MemoryScreen() }        // 记忆库
                     composable("knowledge") { KnowledgeRoute() }   // 知识库投喂
                     composable("cloud") { CloudConfigScreen() }    // 云端 API 配置
+                    composable("filesearch") {             // 文件检索
+                        val vm: FilesearchViewModel = hiltViewModel()  // 文件检索 ViewModel
+                        FilesearchScreen(viewModel = vm)   // 渲染文件检索页
+                    }
                 }
             }
         }
@@ -189,6 +195,7 @@ private fun AppDrawer(                                    // 侧边菜单
 
             DrawerItem("待办清单") { onNavigate("todo") }  // 待办清单
             DrawerItem("知识库") { onNavigate("knowledge") }  // 知识库投喂
+            DrawerItem("文件检索") { onNavigate("filesearch") }  // 文件检索（M7 提权索引）
             DrawerItem("数据库配置") { onNavigate("db") }  // 数据库配置
             DrawerItem("记忆库") { onNavigate("memory") }  // 记忆库
 
