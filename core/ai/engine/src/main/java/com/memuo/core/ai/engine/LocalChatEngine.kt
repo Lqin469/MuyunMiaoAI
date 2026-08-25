@@ -56,11 +56,11 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
             lastLoadError = null                         // 清空错误（交给 streamChat 用文件检测提示）
             return@withLock 0L                          // 返回 0
         }
-        // 内存预检：按权重大小估算所需内存（权重 × 2 + 系统开销 512MB），不足则提前拦截
+        // 内存预检：按权重大小估算所需内存（MNN memory:low 用 mmap 映射权重，实际峰值 ≈ 权重×1.5 + KV cache/开销）
         val weight = File(dir, "llm.mnn.weight")         // 权重文件
         if (weight.exists()) {                           // 有权重才做预检
             val weightMb = weight.length() / (1024 * 1024)  // 权重大小（MB）
-            val requiredMb = weightMb * 2 + 512          // 估算所需（权重 + KV cache/激活 + 开销）
+            val requiredMb = weightMb * 3 / 2 + 256      // 估算所需（权重×1.5 + 256MB KV/开销）
             val availMb = availableMemMb()               // 当前可用
             if (availMb in 1..(requiredMb - 1)) {        // 可用内存不足
                 lastLoadError = "内存不足：该模型权重约 ${weightMb}MB，运行需约 ${requiredMb}MB 可用内存，当前仅 ${availMb}MB。\n建议关闭后台应用后重试，或改用更小模型（如 Qwen3.5-0.8B）。"
