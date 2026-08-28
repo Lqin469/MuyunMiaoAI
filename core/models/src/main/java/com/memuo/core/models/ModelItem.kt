@@ -45,3 +45,15 @@ data class HardwareProfile(                                 // 硬件画像
     val abi: String,                                       // CPU 架构（arm64-v8a 等）
     val gpu: String,                                       // GPU 信息（Vulkan 版本等）
 )
+
+/**
+ * 本地模型信息（LocalModelInfo）—— 本地模型选择页用（M-035）。
+ * 由 ModelImporter.listLocalModels() 扫描 modelsDir() 生成。
+ */
+data class LocalModelInfo(                                 // 本地模型信息
+    val id: String,                                        // 唯一 ID（如 "mnn-llm" / "gguf-xxx"）
+    val name: String,                                      // 显示名
+    val format: String,                                    // 格式（MNN / GGUF）
+    val sizeBytes: Long,                                   // 体积（字节）
+    val runnable: Boolean,                                 // 当前是否可运行（MNN 可，GGUF 需 llama.cpp 运行时）
+)

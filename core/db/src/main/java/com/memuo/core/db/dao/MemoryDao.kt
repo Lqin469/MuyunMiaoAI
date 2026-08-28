@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy                    // 导入冲突策略
 import androidx.room.Query                                 // 导入 Query：自定义 SQL
 import com.memuo.core.db.entity.KbMemory                   // 导入记忆实体
 import com.memuo.core.db.entity.MemoryType                 // 导入记忆类型枚举
+import kotlinx.coroutines.flow.Flow                        // 导入 Flow：响应式数据流（观察用）
 
 /**
  * 会话记忆 DAO —— 长期记忆的读写（R6，M5 使用）。
@@ -24,6 +25,10 @@ interface MemoryDao {                                      // 记忆数据访问
     /** 取全部记忆（语义检索候选集）。 */
     @Query("SELECT * FROM kb_memory ORDER BY ts DESC LIMIT :limit")  // SQL：按时间倒序取最近 N 条
     suspend fun recent(limit: Int = 500): List<KbMemory>  // 返回最近的记忆列表
+
+    /** 观察最近的记忆（响应式，记忆页列表实时刷新用）。 */
+    @Query("SELECT * FROM kb_memory ORDER BY ts DESC LIMIT :limit")  // SQL：按时间倒序取最近 N 条
+    fun observeRecent(limit: Int = 500): Flow<List<KbMemory>>  // 返回记忆流（新增/删除自动推送）
 
     /** 删除某条记忆（用户手动清理用）。 */
     @Query("DELETE FROM kb_memory WHERE id = :id")         // SQL：按 ID 删除

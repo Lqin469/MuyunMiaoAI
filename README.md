@@ -83,7 +83,7 @@ core/                       # 能力层（只依赖接口）
   search/                   # 文件索引 + 许可闸门 + 进度契约（R11）
   models/                   # 模型管理：下载/硬件评估/本地导入（R2/R3）
 feature/                    # 业务层
-  notes/  chat/  knowledge/  filesearch/  settings/
+  notes/  chat/  knowledge/  settings/
 scripts/                    # 安全自查脚本与 git 钩子
 docs/                       # 文档驱动开发（详见 docs/00-overview.md）
 PROMPT.md                   # 项目初始化与安全规范整合提示词

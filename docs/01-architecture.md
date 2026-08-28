@@ -39,7 +39,7 @@ Data 层（Room·FTS5 / DataStore / SAF·绝对路径 / WorkManager / OkHttp(SSE
 | core:ingest | 文档/图片/压缩包解析、分块、增量入库 | db, embed, storage |
 | core:search | 文件索引、许可闸门、进度契约、检索服务 | db, storage |
 | core:models | 模型目录、下载/校验/删除、本地导入、硬件评估 | storage |
-| feature:notes / chat / knowledge / filesearch / settings | 各业务页 | 对应 core |
+| feature:notes / chat / knowledge / settings | 各业务页 | 对应 core |
 
 ## M0 已落地的接口（详见 03-contracts.md）
 

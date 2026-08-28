@@ -29,6 +29,7 @@ import javax.inject.Singleton                              // 导入 Singleton�
 class LocalChatEngine @Inject constructor(               // 构造函数注入
     @ApplicationContext private val context: Context,    // 注入应用上下文（内存检测）
     private val storage: StorageProvider,                // 注入存储提供者（决定模型目录）
+    private val monitor: EngineRuntimeMonitor,           // 注入运行状态监控器（M-027 状态监控）
 ) : ChatEngine {                                         // 实现 ChatEngine 接口
     override val type: EngineType = EngineType.LOCAL      // 引擎类型 = 本地
 
@@ -56,6 +57,8 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
             lastLoadError = null                         // 清空错误（交给 streamChat 用文件检测提示）
             return@withLock 0L                          // 返回 0
         }
+        monitor.onLoading(dir.name)                      // 进入加载阶段（状态监控）
+        val loadStart = System.currentTimeMillis()       // 加载计时起点
         // 内存预检：按权重大小估算所需内存（MNN memory:low 用 mmap 映射权重，实际峰值 ≈ 权重×1.5 + KV cache/开销）
         val weight = File(dir, "llm.mnn.weight")         // 权重文件
         if (weight.exists()) {                           // 有权重才做预检
@@ -64,6 +67,7 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
             val availMb = availableMemMb()               // 当前可用
             if (availMb in 1..(requiredMb - 1)) {        // 可用内存不足
                 lastLoadError = "内存不足：该模型权重约 ${weightMb}MB，运行需约 ${requiredMb}MB 可用内存，当前仅 ${availMb}MB。\n建议关闭后台应用后重试，或改用更小模型（如 Qwen3.5-0.8B）。"
+                monitor.onError(lastLoadError!!)         // 状态监控：加载出错
                 return@withLock 0L                       // 拦截，返回 0
             }
         }
@@ -78,8 +82,10 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
             } else {
                 "模型加载失败：文件齐全但 MNN 初始化出错，可能是 config.json 与权重不匹配，或模型文件损坏。请使用 MNN 官方导出的 Qwen 模型。"  // 兜底
             }
+            monitor.onError(lastLoadError!!)             // 状态监控：加载出错
         } else {
             lastLoadError = null                         // 加载成功，清空错误
+            monitor.onLoaded(System.currentTimeMillis() - loadStart)  // 状态监控：加载完成（耗时）
         }
         nativePtr                                       // 返回指针
     }
@@ -97,11 +103,13 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
             val required = listOf("config.json", "llm.mnn", "llm.mnn.weight", "tokenizer.txt", "llm.mnn.json", "visual.mnn", "visual.mnn.weight")
             val missing = required.filterNot { File(dir, it).exists() }  // 缺失的文件
             val weight = File(dir, "llm.mnn.weight")    // 权重文件
+            val visualWeight = File(dir, "visual.mnn.weight")  // 视觉权重文件
             val msg = when {                            // 按状态给具体提示
                 loadErr != null -> "⚠️ $loadErr\n"      // 内存不足 / 加载失败（具体原因）
                 missing.isNotEmpty() -> "⚠️ 模型文件缺失：${missing.joinToString("、")}。\n请重新导入完整模型目录（含上述全部文件）。\n"
-                weight.length() < 100L * 1024 * 1024 -> "⚠️ 权重文件不完整（仅 ${weight.length() / 1024 / 1024}MB）。请重新导入完整模型。\n"
-                else -> "⚠️ 模型加载失败：文件齐全但 MNN 加载出错，可能是 config.json 与权重不匹配。请用 MNN 官方导出的 Qwen 模型。\n"
+                weight.length() < 100L * 1024 * 1024 -> "⚠️ 文本权重不完整（仅 ${weight.length() / 1024 / 1024}MB）。请重新导入完整模型。\n"
+                visualWeight.length() < 30L * 1024 * 1024 -> "⚠️ 视觉权重不完整（仅 ${visualWeight.length() / 1024 / 1024}MB，完整约 63MB）。文件可能复制中断，请到「模型管理」删除后重新导入。\n"
+                else -> "⚠️ 模型加载失败：文件齐全但 MNN 初始化出错。可能原因：①模型文件在导入时复制不完整（建议到「模型管理」删除后重新导入）；②当前引擎版本与模型导出格式不匹配（请使用 MNN 官方导出的 Qwen 模型）。\n"
             }
             trySend(ChatEvent.Delta(msg))               // 提示
             trySend(ChatEvent.Done("no_model"))         // 结束
@@ -116,8 +124,15 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
             return@callbackFlow                          // 返回
         }
 
+        monitor.onRunning()                             // 进入推理阶段（状态监控）
+        val inferStart = System.currentTimeMillis()     // 推理计时起点（首 token 延迟基准）
         val callback = object : MnnLlmNative.DeltaCallback() {  // 构造增量回调
             override fun onDelta(text: String) {        // native 逐段回调
+                val now = System.currentTimeMillis()    // 当前时间
+                if (monitor.state.value.firstTokenMs == 0L) {  // 尚未记录首 token
+                    monitor.onFirstToken(now - inferStart)  // 记录首 token 延迟
+                }
+                monitor.onToken()                       // token 计数（状态监控）
                 trySend(ChatEvent.Delta(text))          // 转成 Delta 事件
             }
         }
@@ -125,6 +140,7 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
         val ok = withContext(Dispatchers.IO) {          // IO 线程阻塞生成
             runCatching { MnnLlmNative.nativeResponse(ptr, userMsg, callback) }.getOrDefault(false)  // 生成
         }
+        if (ok) monitor.onDone() else monitor.onError("推理失败")  // 推理结束/出错（状态监控）
         trySend(ChatEvent.Done(if (ok) "stop" else "error"))  // 结束事件（原因）
         close()                                         // 关闭流
     }
@@ -134,5 +150,9 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
         val p = nativePtr                               // 取指针
         nativePtr = 0L                                  // 置空
         if (p != 0L) MnnLlmNative.nativeRelease(p)      // 释放 native 资源
+        monitor.onReleased()                            // 状态监控：已释放
     }
+
+    /** 模型是否已加载（M-034：诊断时判断，避免重复加载导致 OOM 崩溃）。 */
+    fun isModelLoaded(): Boolean = nativePtr != 0L      // 已加载判断
 }

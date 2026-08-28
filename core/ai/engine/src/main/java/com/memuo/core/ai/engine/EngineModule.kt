@@ -15,12 +15,16 @@ import javax.inject.Singleton                             // 导入 Singleton：
 @InstallIn(SingletonComponent::class)                      // 安装到应用级单例组件
 object EngineModule {                                      // 单例对象：提供引擎依赖
 
-    /** 提供 OkHttpClient（单例，云端 SSE 用）。 */
+    /** 提供 OkHttpClient（单例，云端 SSE 用；含超时配置，M-027 增强）。 */
     @Provides                                              // 标记为提供依赖
     @Singleton                                             // 单例（复用连接池）
     fun provideOkHttpClient(): OkHttpClient =              // 提供方法
         OkHttpClient.Builder()                             // 构造 OkHttp
-            .build()                                       // 用默认配置（超时/连接池等；后续可加拦截器/日志）
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)   // 连接超时 10s（快速失败供重试）
+            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)     // 读超时 120s（SSE 长连接）
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)     // 写超时 30s
+            .retryOnConnectionFailure(false)               // 关闭底层自动重试（重试由 CloudApiClient 显式控制，防重复）
+            .build()                                       // 构建
 
     /** 提供 ChatEngine（M6 起经 EngineRouter 按用户设置动态切换本地/云端）。 */
     @Provides                                              // 标记为提供依赖

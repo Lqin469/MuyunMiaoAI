@@ -28,4 +28,5 @@ android {                                              // Android 构建配置�
 dependencies {                                         // 本模块依赖列表
     implementation(libs.hilt.android)                  // Hilt 运行时（@Module/@Provides 注解）
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器（编译期生成注入代码）
+    implementation(libs.datastore.preferences)         // DataStore 偏好存储（壁纸配置/首次启动标记）
 }

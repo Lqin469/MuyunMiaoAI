@@ -30,14 +30,18 @@ android {                                              // Android 构建配置�
 }
 
 dependencies {                                         // 本模块依赖列表
-    implementation(project(":core:search"))            // 依赖搜索模块（实现其 SearchSettings 接口）
+    implementation(project(":core:search"))            // 依赖搜索模块（实现其 SearchSettings 接口 + PrivilegeManager）
     implementation(project(":core:ai:engine"))         // 依赖引擎模块（实现 EngineSettings/CloudConfigProvider 接口）
     implementation(project(":core:models"))            // 依赖模型模块（模型导入 ModelImporter）
     implementation(project(":core:db"))                // 依赖数据库模块（EngineType/MemoryDao 等）
-    implementation(project(":core:storage"))           // 依赖存储模块（数据库配置页 StorageProvider）
+    implementation(project(":core:storage"))           // 依赖存储模块（数据库配置页 StorageProvider + 壁纸配置）
     implementation(project(":core:ingest"))            // 依赖入库模块（知识库投喂 KnowledgeRepository）
+    implementation(project(":core:ui"))                // 依赖共享 UI（主题/组件/图标/Toast，原型迁移新增）
+    implementation(project(":core:device"))            // 依赖设备检测模块（自检真数据，2026-08-28 新增）
+    implementation(project(":core:lan"))               // 依赖局域网传输模块（真传输，2026-08-28 新增）
 
     implementation(libs.androidx.documentfile)         // DocumentFile（SAF 目录遍历，知识库投喂）
+    implementation(libs.androidx.activity.compose)     // Activity+Compose（壁纸上传/模型导入选择器）
 
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础
