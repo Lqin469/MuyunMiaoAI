@@ -34,11 +34,14 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:ai:engine"))         // 依赖引擎模块（ChatEngine/ChatEvent）
     implementation(project(":core:ai:memory"))         // 依赖记忆模块（每 N 轮提炼）
     implementation(project(":core:ai:tools"))          // 依赖工具总线（search_file 等 AI 工具）
+    implementation(project(":core:ui"))                // 依赖共享 UI（主题/图标/Toast/位图加载，原型迁移新增）
+    implementation(project(":core:storage"))           // 依赖存储模块（壁纸配置 WallpaperPrefs）
 
     implementation(platform(libs.compose.bom))         // Compose BOM 版本清单
     implementation(libs.compose.ui)                    // Compose UI 基础
     implementation(libs.compose.material3)             // Material3 组件
     implementation(libs.compose.material.icons.core)   // Material 基础图标（返回箭头）
+    implementation(libs.androidx.activity.compose)     // Activity+Compose（选图/拍照启动器）
 
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器

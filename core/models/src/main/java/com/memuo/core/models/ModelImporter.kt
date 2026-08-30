@@ -38,10 +38,14 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
     fun missingFiles(dir: File): List<String> =          // 缺失文件诊断
         REQUIRED_FILES.filterNot { File(dir, it).exists() }  // 返回缺失项
 
-    /** 校验模型完整性：必需文件齐全 + 权重文件大小合理（>100MB，防复制不完整）。 */
+    /** 校验模型完整性：必需文件齐全 + 关键文件大小合理（M-027 增强，防复制中断产生不完整文件）。 */
     private fun verifyModel(dir: File): Boolean {        // 完整性校验
         if (!detectMnnModel(dir)) return false           // 必需文件齐全
-        return File(dir, "llm.mnn.weight").length() > 100L * 1024 * 1024  // 权重 >100MB（Qwen 0.8B 约 470M）
+        // 关键文件最小合理大小（Qwen3.5-0.8B 实测：weight 449MB / visual.weight 63MB / llm.mnn 2MB / visual.mnn 251KB）
+        return File(dir, "llm.mnn.weight").length() > 100L * 1024 * 1024 &&      // 文本权重 >100MB
+            File(dir, "visual.mnn.weight").length() > 30L * 1024 * 1024 &&       // 视觉权重 >30MB
+            File(dir, "llm.mnn").length() > 100L * 1024 &&                       // 模型结构 >100KB
+            File(dir, "visual.mnn").length() > 100L * 1024                      // 视觉结构 >100KB
     }
 
     /** 递归查找含 config.json + llm.mnn + llm.mnn.weight 的目录（最多 5 层，兼容 HF 缓存嵌套）。 */
@@ -124,6 +128,43 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
         }
     }
 
+    /**
+     * 导入 GGUF 模型文件到模型目录（modelsDir()/gguf/，M-027 落地）。
+     * GGUF 运行需要 llama.cpp 运行时（后续里程碑），本次完成「导入 + 管理」。
+     * @return 导入成功返回 true（复制完成 + 大小校验）
+     */
+    suspend fun importGgufToAppDir(sourceFile: File): Boolean = withContext(Dispatchers.IO) {  // IO 线程
+        runCatching {                                    // 容错
+            if (!sourceFile.isFile) return@withContext false  // 非文件
+            val targetDir = File(storage.modelsDir(), "gguf")  // GGUF 模型目录
+            targetDir.mkdirs()                            // 建目录
+            val target = File(targetDir, sourceFile.name) // 目标文件
+            sourceFile.copyTo(target, overwrite = true)   // 复制（同名覆盖）
+            target.length() == sourceFile.length()        // 大小校验（防复制不完整）
+        }.getOrDefault(false)                             // 失败返回 false
+    }
+
+    /** 从 SAF 文件 Uri 导入 GGUF（系统文件选择器选中单个 .gguf 后调用）。 */
+    suspend fun importGgufFromUri(context: Context, uri: Uri): Boolean = withContext(Dispatchers.IO) {  // IO 线程
+        runCatching {                                    // 容错
+            val targetDir = File(storage.modelsDir(), "gguf")  // GGUF 模型目录
+            targetDir.mkdirs()                            // 建目录
+            val name = context.contentResolver.query(uri, null, null, null, null)?.use { c ->  // 查询文件名
+                val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)  // 名称列
+                if (c.moveToFirst() && i >= 0) c.getString(i) else null  // 读名称
+            } ?: uri.lastPathSegment ?: "model.gguf"      // 兜底名
+            val target = File(targetDir, name)            // 目标文件
+            context.contentResolver.openInputStream(uri)?.use { input ->  // 打开输入流
+                target.outputStream().use { input.copyTo(it) }  // 复制
+            }
+            target.length() > 0                           // 非空即成功
+        }.getOrDefault(false)                             // 失败返回 false
+    }
+
+    /** GGUF 模型是否已导入（modelsDir()/gguf/ 下存在 .gguf 文件）。 */
+    fun hasGgufModel(): Boolean =                         // GGUF 就绪检测
+        File(storage.modelsDir(), "gguf").listFiles()?.any { it.name.endsWith(".gguf", ignoreCase = true) } == true  // 存在 gguf
+
     /** 识别一个本地文件/目录格式，返回 ModelItem；不支持则返回 null。 */
     fun importFromPath(path: String): ModelItem? {        // 格式识别（元信息）
         val file = File(path)                             // 构造文件
@@ -180,4 +221,71 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
 
     /** 文件格式枚举。 */
     private enum class Format { MNN_DIR, GGUF, UNKNOWN }
+
+    /**
+     * 枚举已安装的本地模型（M-035 新增）：供「本地模型选择页」列出可选模型。
+     *  - MNN：modelsDir()/llm/ 下的主模型（含 config.json 即视为已安装）；
+     *  - GGUF：modelsDir()/gguf/ 下的 .gguf 文件（逐个列出）。
+     */
+    fun listLocalModels(): List<LocalModelInfo> {        // 枚举本地模型
+        val result = mutableListOf<LocalModelInfo>()     // 结果集
+        // ① MNN 主模型
+        val mnnDir = File(storage.modelsDir(), "llm")    // MNN 目录
+        if (File(mnnDir, "config.json").exists()) {      // 已安装 MNN 模型
+            val totalSize = mnnDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }  // 总大小
+            result += LocalModelInfo(                    // 组装
+                id = "mnn-llm",                          // 固定 ID（单 MNN 模型）
+                name = readMnnModelName(mnnDir) ?: "本地 MNN 模型",  // 读 config 里的模型名
+                format = "MNN",                          // 格式
+                sizeBytes = totalSize,                   // 总大小
+                runnable = true,                         // MNN 可运行（LocalChatEngine 直接加载）
+            )
+        }
+        // ② GGUF 模型
+        val ggufDir = File(storage.modelsDir(), "gguf")  // GGUF 目录
+        ggufDir.listFiles()?.filter { it.isFile && it.name.endsWith(".gguf", ignoreCase = true) }?.forEach { f ->  // 遍历 gguf
+            result += LocalModelInfo(                    // 组装
+                id = "gguf-${f.nameWithoutExtension}",   // ID
+                name = f.nameWithoutExtension,           // 显示名
+                format = "GGUF",                         // 格式
+                sizeBytes = f.length(),                  // 大小
+                runnable = false,                        // GGUF 需 llama.cpp 运行时（后续里程碑）
+            )
+        }
+        return result.sortedBy { it.format }             // MNN 在前
+    }
+
+    /** 读 MNN 模型名（config.json 的 llm_model 或目录名，尽力而为）。 */
+    private fun readMnnModelName(dir: File): String? {   // 读模型名
+        return runCatching {                             // 容错
+            val cfg = File(dir, "config.json").readText()  // 读 config
+            // 简单提取 "llm_model": "xxx.mnn" 里的名字，或忽略返回 null
+            null                                        // 暂不解析，用目录名
+        }.getOrNull()
+    }
+
+    /**
+     * 删除本地模型（M-027 新增）：按格式删除磁盘文件。
+     *  - MNN：删除整个 modelsDir()/llm/ 目录（当前只支持单个 MNN 模型）；
+     *  - GGUF：删除 modelsDir()/gguf/ 下匹配 [modelName] 的文件。
+     * @return 删除成功返回 true
+     */
+    fun deleteLocalModel(format: String, modelName: String? = null): Boolean {  // 删除模型
+        return try {                                     // 容错
+            when (format.uppercase()) {                  // 按格式分发
+                "MNN" -> File(storage.modelsDir(), "llm").deleteRecursively()  // 删 MNN 目录
+                "GGUF" -> {                              // 删 GGUF 文件
+                    val ggufDir = File(storage.modelsDir(), "gguf")  // gguf 目录
+                    if (modelName != null) {             // 指定名称
+                        listOf(modelName, "$modelName.gguf").any { n -> File(ggufDir, n).delete() }  // 按名删除
+                    } else {                             // 未指定
+                        ggufDir.deleteRecursively()      // 删整个目录
+                    }
+                }
+                else -> false                            // 未知格式
+            }
+        } catch (e: Exception) {                         // 异常
+            false                                        // 失败
+        }
+    }
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  core/lan/src/main/AndroidManifest.xml — 局域网传输模块清单
+  作用：声明 NSD 设备发现与 Socket 传输所需权限（manifest merge 自动并入 app）
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 网络：TCP 传输必需 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 网络状态：判断 Wi-Fi 可用性（局域网传输前提） -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- 多播锁：部分设备 NSD 发现需要组播权限 -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+</manifest>

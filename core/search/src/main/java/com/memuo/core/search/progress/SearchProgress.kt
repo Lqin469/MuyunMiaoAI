@@ -24,7 +24,7 @@ enum class SearchPhase(val label: String) {                // 枚举：搜索所
  *  2. 扫描/索引期间每处理 200 个文件或每前进 1%，至少上报一次（含 currentPath）；
  *  3. 结束（DONE / CANCELLED / FAILED）必须上报，percent 分别为 1f / 停在当前值 / 0f。
  *
- * UI 必须将本对象渲染为可见进度条（:feature:filesearch 的 SearchProgressBar）。
+ * UI 层必须将本对象渲染为可见进度条（检索进度 UI 组件）。
  */
 data class SearchProgress(                                // 进度数据类：一次搜索的完整进度快照（不可变）
     val requestId: String,                                // 所属搜索会话的 ID

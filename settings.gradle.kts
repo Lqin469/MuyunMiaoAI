@@ -31,6 +31,7 @@ rootProject.name = "MuyunMiaoAI"                      // 工程根名称（与 G
 include(":app")                                       // 注册应用壳模块（可运行的 APK）
 
 // :core —— 能力层（只依赖接口，被 feature 层复用）
+include(":core:ui")                                   // 共享 UI：主题/通用组件/图标/Toast（HTML 原型迁移新增）
 include(":core:storage")                              // 存储抽象与自定义目录（R4/R5）
 include(":core:db")                                   // Room 数据库全库 + FTS5（M1 实现）
 include(":core:ai:engine")                            // AI 引擎：本地 MNN / 云端 API 双实现
@@ -40,10 +41,11 @@ include(":core:ai:memory")                            // 会话自动记忆提�
 include(":core:ingest")                               // 文档/图片/压缩包解析入库（R8/R9）
 include(":core:search")                               // 文件索引 + 搜索许可闸门（R11）
 include(":core:models")                               // 模型管理：下载/评估/导入（R2/R3）
+include(":core:device")                               // 设备检测：硬件信息 + 满足度判定（2026-08-28 新增）
+include(":core:lan")                                  // 局域网传输：NSD 发现 + 断点续传（2026-08-28 新增）
 
 // :feature —— 业务层（具体界面与用例）
 include(":feature:notes")                             // 常规备忘录模块
 include(":feature:chat")                              // AI 对话模块
 include(":feature:knowledge")                         // 知识库管理模块
-include(":feature:filesearch")                        // 文件检索模块（含进度条 UI）
 include(":feature:settings")                          // 设置模块（引擎/存储/隐私开关）

@@ -45,4 +45,8 @@ interface ChatDao {                                        // 会话数据访问
     /** 删除某会话的全部消息。 */
     @Query("DELETE FROM messages WHERE convId = :convId") // SQL：按会话删除消息
     suspend fun deleteMessagesByConv(convId: Long)        // 删除会话消息
+
+    /** 删除单条消息（重新生成 AI 回复时移除旧回复用，原型迁移新增）。 */
+    @Query("DELETE FROM messages WHERE id = :id")         // SQL：按 ID 删除消息
+    suspend fun deleteMessage(id: Long)                   // 删除单条消息
 }

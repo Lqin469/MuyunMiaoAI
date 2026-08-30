@@ -1,101 +1,241 @@
 package com.memuo.feature.settings                         // 声明包名：设置业务模块
 
-import android.content.Context                            // 导入 Context
-import android.net.Uri                                    // 导入 Uri
-import androidx.compose.foundation.layout.Column          // 导入 Column
-import androidx.compose.foundation.layout.PaddingValues   // 导入 PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize     // 导入 fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth    // 导入 fillMaxWidth
-import androidx.compose.foundation.layout.padding          // 导入 padding
-import androidx.compose.foundation.lazy.LazyColumn         // 导入 LazyColumn
-import androidx.compose.foundation.lazy.items              // 导入 items
-import androidx.compose.material3.Card                    // 导入 Card
-import androidx.compose.material3.ExperimentalMaterial3Api // 导入 ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme           // 导入 MaterialTheme
-import androidx.compose.material3.Scaffold                // 导入 Scaffold
-import androidx.compose.material3.Text                    // 导入 Text
-import androidx.compose.material3.TextButton              // 导入 TextButton
-import androidx.compose.material3.TopAppBar               // 导入 TopAppBar
-import androidx.compose.runtime.Composable                // 导入 Composable
-import androidx.compose.runtime.collectAsState            // 导入 collectAsState
-import androidx.compose.runtime.getValue                  // 导入 getValue
-import androidx.compose.ui.Modifier                       // 导入 Modifier
-import androidx.compose.ui.unit.dp                        // 导入 dp
-import androidx.documentfile.provider.DocumentFile         // 导入 DocumentFile：SAF 目录
-import androidx.hilt.navigation.compose.hiltViewModel     // 导入 hiltViewModel
-import androidx.lifecycle.ViewModel                       // 导入 ViewModel
-import androidx.lifecycle.viewModelScope                  // 导入 viewModelScope
-import com.memuo.core.db.dao.KbDao                        // 导入 KbDao
-import com.memuo.core.db.entity.IngestStatus              // 导入入库状态
-import com.memuo.core.db.entity.KbDocument                // 导入知识库文档
-import com.memuo.core.ingest.KnowledgeRepository          // 导入知识库仓库
+import androidx.compose.foundation.background             // 导入 background：背景修饰
+import androidx.compose.foundation.clickable              // 导入 clickable：点击修饰
+import androidx.compose.foundation.layout.Box             // 导入 Box：盒式布局
+import androidx.compose.foundation.layout.Column          // 导入 Column：纵向布局
+import androidx.compose.foundation.layout.Row             // 导入 Row：横向布局
+import androidx.compose.foundation.layout.fillMaxSize     // 导入 fillMaxSize：铺满
+import androidx.compose.foundation.layout.fillMaxWidth    // 导入 fillMaxWidth：占满宽度
+import androidx.compose.foundation.layout.padding          // 导入 padding：内边距
+import androidx.compose.foundation.layout.size            // 导入 size：固定尺寸
+import androidx.compose.foundation.lazy.LazyColumn         // 导入 LazyColumn：懒加载列表
+import androidx.compose.foundation.lazy.items              // 导入 items：列表项
+import androidx.compose.foundation.shape.RoundedCornerShape  // 导入 RoundedCornerShape：圆角形状
+import androidx.compose.material3.Icon                    // 导入 Icon：图标
+import androidx.compose.material3.MaterialTheme           // 导入 MaterialTheme：主题
+import androidx.compose.material3.Text                    // 导入 Text：文本
+import androidx.compose.runtime.Composable                // 导入 Composable：可组合函数注解
+import androidx.compose.runtime.collectAsState            // 导入 collectAsState：状态流→状态
+import androidx.compose.runtime.getValue                  // 导入 getValue：by 委托
+import androidx.compose.runtime.mutableStateOf            // 导入 mutableStateOf：可变状态
+import androidx.compose.runtime.remember                  // 导入 remember：记住状态
+import androidx.compose.runtime.setValue                  // 导入 setValue：by 委托写
+import androidx.compose.ui.Alignment                      // 导入 Alignment：对齐
+import androidx.compose.ui.Modifier                       // 导入 Modifier：修饰
+import androidx.compose.ui.draw.clip                      // 导入 clip：裁剪
+import androidx.compose.ui.draw.shadow                    // 导入 shadow：投影
+import androidx.compose.ui.graphics.Color                 // 导入 Color：颜色
+import androidx.compose.ui.text.font.FontWeight           // 导入 FontWeight：字重
+import androidx.compose.ui.unit.dp                        // 导入 dp：尺寸单位
+import androidx.hilt.navigation.compose.hiltViewModel     // 导入 hiltViewModel：Hilt 提供 ViewModel
+import androidx.lifecycle.ViewModel                       // 导入 ViewModel：UI 数据持有者
+import androidx.lifecycle.viewModelScope                  // 导入 viewModelScope：协程作用域
+import com.memuo.core.ui.AppIcons                          // 导入应用图标集
+import com.memuo.core.ui.components.LocalToast            // 导入 Toast 状态
+import com.memuo.core.ui.components.MuyunToggle           // 导入 iOS 风格开关
+import com.memuo.core.ui.components.SubBody               // 导入子页内容容器
+import com.memuo.core.ui.components.SubHeader             // 导入子页顶栏
+import com.memuo.core.ui.theme.MuyunBrandGradient         // 导入品牌渐变
+import com.memuo.core.ui.theme.MuyunCard                  // 导入卡片白
+import com.memuo.core.ui.theme.MuyunPurple                // 导入品牌紫
+import com.memuo.core.ui.theme.MuyunPurpleBg              // 导入品牌紫底
+import com.memuo.core.ui.theme.MuyunText                  // 导入主文字色
+import com.memuo.core.ui.theme.MuyunText2                 // 导入次级文字色
+import com.memuo.core.ui.theme.MuyunText3                 // 导入三级文字色
 import dagger.hilt.android.lifecycle.HiltViewModel        // 导入 HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext  // 导入 ApplicationContext
-import kotlinx.coroutines.Dispatchers                      // 导入 Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow            // 导入 MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow                  // 导入 StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow            // 导入可变状态流
+import kotlinx.coroutines.flow.StateFlow                  // 导入只读状态流
 import kotlinx.coroutines.flow.asStateFlow                // 导入 asStateFlow
-import kotlinx.coroutines.launch                           // 导入 launch
-import kotlinx.coroutines.withContext                      // 导入 withContext
-import java.io.File                                        // 导入 File
-import javax.inject.Inject                                // 导入 Inject
+import kotlinx.coroutines.launch                           // 导入 launch：协程
+import org.json.JSONArray                                  // 导入 JSONArray：JSON 数组
+import javax.inject.Inject                                // 导入 Inject：构造函数注入
 
-/** 默认知识库 ID（单知识库 MVP）。 */
+/** 默认知识库 ID（云端资料库沿用，历史文档不丢）。 */
 const val DEFAULT_KB = "default"                          // 默认知识库标识
 
+/** 本地私密库 ID（对应 HTML「本地的私密库」条目）。 */
+const val PRIVATE_KB = "private"                          // 私密库标识
+
+/** 知识库文件夹（对应 HTML 知识库条目：云端的资料库 / 本地的私密库 / 用户新建）。 */
+data class KbFolder(val name: String, val localOnly: Boolean, val folderId: String = DEFAULT_KB)  // 文件夹（含库 ID）
+
 /**
- * 知识库页 —— 投喂文档到 AI 知识库（M-013 补全 RAG 投喂入口）。
- * 支持：SAF 文件夹整体投喂、单文件投喂、已入库文档列表。
+ * 知识库页 —— 文件夹列表 + 隐私开关 + 新建（HTML 知识库页迁移）。
+ * 点击文件夹 → 进入详情页（展示该库文件列表 + 添加文件/文件夹）。
  */
-@OptIn(ExperimentalMaterial3Api::class)                  // 实验性 API
 @Composable                                               // 可组合 UI 函数
 fun KnowledgeScreen(                                      // 知识库页
-    onPickFolder: () -> Unit,                             // 选文件夹回调（由上层触发 SAF 选择器）
-    onPickFile: () -> Unit,                               // 选单文件回调
+    onBack: () -> Unit,                                   // 返回回调
+    onOpenFolder: (KbFolder) -> Unit,                     // 点击文件夹 → 详情页
     viewModel: KnowledgeViewModel = hiltViewModel(),      // Hilt 提供 ViewModel
 ) {
-    val docs by viewModel.docs.collectAsState()           // 订阅文档列表
-    val message by viewModel.message.collectAsState()     // 订阅提示
+    val folders by viewModel.folders.collectAsState()     // 订阅文件夹列表
+    val privacy by viewModel.privacy.collectAsState()     // 订阅隐私开关
+    val toast = LocalToast.current                        // 取全局 Toast
+    var newName by remember { mutableStateOf("") }        // 新知识库名称
 
-    Scaffold(                                             // 脚手架
-        topBar = {                                       // 顶部栏
-            TopAppBar(                                   // 顶部栏组件
-                title = { Text("知识库") },               // 标题
-                actions = {                              // 右侧操作
-                    TextButton(onClick = onPickFile) {    // 单文件投喂
-                        Text("文件")
+    Column(modifier = Modifier.fillMaxSize()) {           // 纵向布局
+        SubHeader(                                       // 顶栏
+            title = "知识库",                            // 标题
+            onBack = onBack,                             // 返回
+        )
+        SubBody(modifier = Modifier.fillMaxSize()) {       // 内容容器
+            LazyColumn(modifier = Modifier.fillMaxSize()) {  // 整页滚动
+                // 知识库文件夹条目（HTML .kb-item，点击进入详情页）
+                items(folders, key = { it.folderId }) { folder ->  // 遍历文件夹
+                    Row(                                  // 条目行
+                        modifier = Modifier              // 修饰
+                            .fillMaxWidth()              // 占满宽度
+                            .padding(bottom = 10.dp)     // 下留白（HTML margin-bottom 10px）
+                            .shadow(1.dp, RoundedCornerShape(14.dp))  // 轻投影
+                            .clip(RoundedCornerShape(14.dp))  // 圆角
+                            .background(MuyunCard)       // 白底
+                            .clickable { onOpenFolder(folder) }  // 点击 → 进入详情页（修复私密库无法进入的 bug）
+                            .padding(horizontal = 16.dp, vertical = 16.dp),  // 内边距（HTML padding 16px）
+                        verticalAlignment = Alignment.CenterVertically,  // 垂直居中
+                    ) {
+                        Box(                             // 文件夹图标底（库标识）
+                            modifier = Modifier         // 修饰
+                                .size(34.dp)            // 34dp
+                                .clip(RoundedCornerShape(10.dp))  // 圆角 10
+                                .background(MuyunPurpleBg)  // 紫浅底
+                                .padding(9.dp),         // 内边距
+                            contentAlignment = Alignment.Center,  // 居中
+                        ) {
+                            Icon(                        // 文件夹图标
+                                imageVector = AppIcons.Folder,  // 图标
+                                contentDescription = null,  // 装饰
+                                tint = MuyunPurple,      // 紫
+                                modifier = Modifier.size(16.dp),  // 16dp
+                            )
+                        }
+                        Text(                            // 名称（HTML .kb-item-name）
+                            text = folder.name,          // 内容
+                            style = MaterialTheme.typography.titleMedium,  // 字号（HTML 15px）
+                            fontWeight = FontWeight.Medium,  // 中粗
+                            color = MuyunText,           // 主色
+                            modifier = Modifier.weight(1f).padding(start = 12.dp),  // 占满 + 留白
+                        )
+                        if (folder.localOnly) {           // 仅本地标签
+                            Box(                          // 标签（HTML .kb-item-tag）
+                                modifier = Modifier     // 修饰
+                                    .padding(end = 8.dp)  // 右留白
+                                    .clip(RoundedCornerShape(10.dp))  // 圆角
+                                    .background(MuyunPurpleBg)  // 紫浅底
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),  // 内边距
+                            ) {
+                                Text(                    // 文字
+                                    text = "仅本地",      // 内容
+                                    style = MaterialTheme.typography.labelSmall,  // 小字（HTML 11px）
+                                    fontWeight = FontWeight.Medium,  // 中粗
+                                    color = MuyunPurple,  // 紫
+                                )
+                            }
+                        }
+                        Box(                             // 删除按钮（HTML .kb-item-delete）
+                            modifier = Modifier         // 修饰
+                                .size(32.dp)            // 32dp
+                                .clip(RoundedCornerShape(8.dp))  // 圆角 8
+                                .clickable {             // 点击删除
+                                    viewModel.deleteFolder(folder.name)  // 删除文件夹
+                                    toast.show("已删除")  // Toast（HTML 同款）
+                                }
+                                .padding(9.dp),         // 内边距
+                        ) {
+                            Icon(                        // 垃圾桶图标
+                                imageVector = AppIcons.Trash,  // 图标
+                                contentDescription = "删除",  // 描述
+                                tint = MuyunText3,       // 三级灰
+                                modifier = Modifier.size(16.dp),  // 16dp
+                            )
+                        }
+                        Icon(                            // 右箭头（提示可进入，HTML .arrow-right）
+                            imageVector = AppIcons.ChevronRight,  // 箭头
+                            contentDescription = null,   // 装饰
+                            tint = MuyunText3,           // 三级灰（主题自适应）
+                            modifier = Modifier.size(14.dp),  // 14dp
+                        )
                     }
-                    TextButton(onClick = onPickFolder) {  // 文件夹投喂
-                        Text("文件夹")
+                }
+                // 隐私库开关区（HTML .kb-privacy）
+                item {                                    // 列表项（隐私开关行）
+                    Row(                                  // 开关行
+                        modifier = Modifier             // 修饰
+                            .fillMaxWidth()             // 占满宽度
+                            .padding(vertical = 20.dp, horizontal = 2.dp),  // 内边距（HTML padding 20px 0）
+                        verticalAlignment = Alignment.CenterVertically,  // 垂直居中
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {  // 信息区
+                            Text(                        // 标题（HTML h4）
+                                text = "隐私库（仅本地可用）",  // 内容
+                                style = MaterialTheme.typography.titleSmall,  // 字号（HTML 14px）
+                                fontWeight = FontWeight.SemiBold,  // 半粗
+                                color = MuyunText,       // 主色
+                            )
+                            Text(                        // 说明（HTML p）
+                                text = "端侧索引，内容不出设备；只有本地管家能引用",  // 文案
+                                style = MaterialTheme.typography.labelSmall,  // 小字（HTML 12px）
+                                color = MuyunText3,      // 三级灰
+                                modifier = Modifier.padding(top = 6.dp),  // 上留白
+                            )
+                        }
+                        MuyunToggle(                      // iOS 开关（HTML .toggle-switch）
+                            checked = privacy,            // 状态
+                            onCheckedChange = { viewModel.setPrivacy(it) },  // 切换
+                        )
                     }
-                },
-            )
-        },
-    ) { innerPadding ->                                   // 内容区
-        Column(                                           // 纵向布局
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-        ) {
-            if (message.isNotBlank()) {                   // 提示消息
-                Text(                                     // 提示文本
-                    message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(16.dp),
-                )
-            }
-            if (docs.isEmpty()) {                         // 空态
-                Text(                                     // 空提示
-                    "知识库为空。点右上角「文件夹」投喂整个目录，或「文件」投喂单个文档（支持 txt/md/pdf/docx/压缩包/图片）。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(24.dp),
-                )
-            } else {                                      // 文档列表
-                LazyColumn(                               // 懒加载列表
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    items(docs, key = { it.docId }) { doc ->  // 遍历文档
-                        DocCard(doc)                      // 文档卡片
+                }
+                // 新建知识库输入行（HTML .kb-new-input）
+                item {                                    // 列表项（新建输入行）
+                    Row(                                  // 输入行
+                        modifier = Modifier.padding(bottom = 12.dp),  // 下留白
+                        verticalAlignment = Alignment.CenterVertically,  // 垂直居中
+                    ) {
+                        Box(                              // 输入框
+                            modifier = Modifier         // 修饰
+                                .weight(1f)             // 占满剩余
+                                .clip(RoundedCornerShape(10.dp))  // 圆角
+                                .background(MuyunCard)  // 白底
+                                .padding(horizontal = 16.dp, vertical = 12.dp),  // 内边距
+                        ) {
+                            androidx.compose.foundation.text.BasicTextField(  // 无边框输入
+                                value = newName,          // 绑定
+                                onValueChange = { newName = it },  // 更新
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MuyunText),  // 字体
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(MuyunPurple),  // 光标
+                                modifier = Modifier.fillMaxWidth(),  // 占满
+                                decorationBox = { inner ->  // 占位
+                                    if (newName.isEmpty()) {  // 空
+                                        Text("新知识库名称", color = MuyunText3, style = MaterialTheme.typography.bodyMedium)  // 占位（HTML 同款）
+                                    }
+                                    inner()               // 输入区
+                                },
+                            )
+                        }
+                        Box(                              // 圆形添加按钮（HTML 渐变圆钮）
+                            modifier = Modifier         // 修饰
+                                .padding(start = 10.dp) // 左留白
+                                .size(44.dp)            // 44dp
+                                .clip(RoundedCornerShape(22.dp))  // 圆形
+                                .background(MuyunBrandGradient)  // 品牌渐变
+                                .clickable {            // 点击新建
+                                    val name = newName.trim()  // 去首尾空格
+                                    if (name.isNotEmpty()) {   // 非空才创建
+                                        viewModel.addFolder(name)  // 添加文件夹
+                                        newName = ""    // 清空
+                                        toast.show("知识库「$name」已创建")  // Toast（HTML 同款）
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,  // 居中
+                        ) {
+                            Icon(                        // 加号图标
+                                imageVector = AppIcons.Plus,  // 图标
+                                contentDescription = "新建知识库",  // 描述
+                                tint = Color.White,      // 白
+                                modifier = Modifier.size(18.dp),  // 18dp
+                            )
+                        }
                     }
                 }
             }
@@ -103,101 +243,69 @@ fun KnowledgeScreen(                                      // 知识库页
     }
 }
 
-/** 文档卡片：文件名 + 状态 + 分块数。 */
-@Composable                                               // 可组合 UI 函数
-private fun DocCard(doc: KbDocument) {                    // 文档卡片
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {  // 卡片
-        Column(modifier = Modifier.padding(16.dp)) {      // 内部
-            Text(doc.fileName, style = MaterialTheme.typography.titleSmall)  // 文件名
-            Text(                                         // 状态 + 分块数
-                "${statusLabel(doc.status)} · ${doc.chunkCount} 块",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
-}
-
-/** 入库状态 → 中文标签。 */
-private fun statusLabel(status: IngestStatus): String = when (status) {  // 状态标签
-    IngestStatus.INDEXED -> "已索引"                     // 已入库
-    IngestStatus.PARSING -> "解析中"                     // 解析中
-    IngestStatus.PENDING -> "待处理"                     // 待处理
-    IngestStatus.FAILED -> "失败"                        // 失败
-}
-
-/** 知识库 ViewModel —— 文档列表 + 投喂。 */
+/** 知识库 ViewModel —— 文件夹列表 + 隐私开关（文档列表与投喂已下沉到详情页 ViewModel）。 */
 @HiltViewModel                                           // 注解：由 Hilt 创建
 class KnowledgeViewModel @Inject constructor(            // 构造函数注入
-    @ApplicationContext private val context: Context,    // 应用上下文
-    private val kbDao: KbDao,                            // 知识库 DAO
-    private val repo: KnowledgeRepository,               // 知识库仓库
+    private val prefs: ExtPrefs,                         // 扩展偏好（文件夹/隐私开关）
 ) : ViewModel() {                                        // 继承 ViewModel
 
-    private val _docs = MutableStateFlow<List<KbDocument>>(emptyList())  // 文档列表
-    val docs: StateFlow<List<KbDocument>> = _docs.asStateFlow()  // 只读暴露
-
-    private val _message = MutableStateFlow("")          // 提示消息
-    val message: StateFlow<String> = _message.asStateFlow()  // 只读暴露
+    private val _folders = MutableStateFlow(listOf(KbFolder("云端的资料库", false, DEFAULT_KB), KbFolder("本地的私密库", true, PRIVATE_KB)))  // 文件夹（HTML 默认两条）
+    val folders: StateFlow<List<KbFolder>> = _folders.asStateFlow()  // 只读暴露
+    private val _privacy = MutableStateFlow(true)        // 隐私开关（默认开，HTML 同款）
+    val privacy: StateFlow<Boolean> = _privacy.asStateFlow()  // 只读暴露
 
     init {                                                // 初始化
-        viewModelScope.launch {                          // 观察文档列表
-            kbDao.observeDocuments(DEFAULT_KB).collect { _docs.value = it }
-        }
-    }
-
-    /** 从 SAF 文件夹投喂：遍历文件复制到缓存后逐个入库。 */
-    fun ingestFolder(uri: Uri) {                          // 文件夹投喂
-        viewModelScope.launch {                          // 协程中执行
-            _message.value = "正在投喂文件夹…"            // 提示
-            val root = DocumentFile.fromTreeUri(context, uri)  // 取目录根
-            if (root == null) {                           // 无法访问
-                _message.value = "无法访问该文件夹"
-                return@launch
-            }
-            val count = withContext(Dispatchers.IO) {     // IO 线程
-                var n = 0                                 // 成功计数
-                root.listFiles().forEach { doc ->         // 遍历子项
-                    if (!doc.isFile) return@forEach       // 只处理文件
-                    val tmp = copyToCache(doc) ?: return@forEach  // 复制到缓存
-                    runCatching { repo.ingestFile(tmp, DEFAULT_KB) }.onSuccess { n++ }  // 入库
-                    tmp.delete()                          // 清理临时文件
+        viewModelScope.launch {                          // 加载文件夹
+            prefs.kbFoldersJson.collect { json ->        // JSON 变化
+                if (json.isNotBlank()) {                 // 有自定义
+                    _folders.value = runCatching {       // 解析
+                        val arr = JSONArray(json)        // 数组
+                        (0 until arr.length()).map { i ->  // 遍历
+                            val o = arr.getJSONObject(i)  // 对象
+                            KbFolder(
+                                name = o.optString("name"),
+                                localOnly = o.optBoolean("localOnly"),
+                                folderId = o.optString("folderId", DEFAULT_KB),  // 兼容旧数据缺 folderId
+                            )
+                        }
+                    }.getOrDefault(_folders.value)       // 失败用默认
                 }
-                n
             }
-            _message.value = "投喂完成：$count 个文件"    // 完成提示
+        }
+        viewModelScope.launch {                          // 加载隐私开关
+            prefs.kbPrivacy.collect { _privacy.value = it }  // 同步
         }
     }
 
-    /** 从 SAF 单文件投喂。 */
-    fun ingestFile(uri: Uri) {                            // 单文件投喂
-        viewModelScope.launch {                          // 协程中执行
-            _message.value = "正在投喂文件…"              // 提示
-            val doc = DocumentFile.fromSingleUri(context, uri)  // 取文件
-            if (doc == null) {                            // 无法访问
-                _message.value = "无法访问该文件"
-                return@launch
-            }
-            val ok = withContext(Dispatchers.IO) {        // IO 线程
-                val tmp = copyToCache(doc) ?: return@withContext false  // 复制
-                val r = runCatching { repo.ingestFile(tmp, DEFAULT_KB) }.isSuccess  // 入库
-                tmp.delete()                              // 清理
-                r
-            }
-            _message.value = if (ok) "投喂完成" else "投喂失败（格式不支持或解析出错）"  // 提示
-        }
+    /** 切换隐私库开关（HTML toggleKbPrivacy）。 */
+    fun setPrivacy(on: Boolean) {                         // 切换开关
+        _privacy.value = on                              // 更新 UI
+        viewModelScope.launch { prefs.setKbPrivacy(on) } // 持久化
     }
 
-    /** 把 SAF 文件复制到缓存目录，返回临时文件（失败返回 null）。 */
-    private fun copyToCache(doc: DocumentFile): File? {   // 复制到缓存
-        return runCatching {                              // 捕获异常
-            val dir = File(context.cacheDir, "kb").apply { mkdirs() }  // 缓存目录
-            val target = File(dir, doc.name ?: "file_${System.currentTimeMillis()}")  // 目标文件
-            context.contentResolver.openInputStream(doc.uri)?.use { input ->  // 读输入流
-                target.outputStream().use { output -> input.copyTo(output) }  // 写本地
-            }
-            target
-        }.getOrNull()                                     // 失败返回 null
+    /** 新建知识库文件夹（HTML addKb）。 */
+    fun addFolder(name: String) {                         // 新建文件夹
+        if (name.isBlank()) return                        // 空忽略
+        // 用名称拼音不可得，直接用时间戳生成稳定库 ID，避免中文路径问题
+        val id = "kb_" + System.currentTimeMillis()       // 生成唯一库 ID
+        _folders.value = _folders.value + KbFolder(name, false, id)  // 加入列表
+        persistFolders()                                  // 持久化
+    }
+
+    /** 删除文件夹（HTML 条目删除按钮）。 */
+    fun deleteFolder(name: String) {                      // 删除文件夹
+        _folders.value = _folders.value.filterNot { it.name == name }  // 移除
+        persistFolders()                                  // 持久化
+    }
+
+    /** 文件夹列表持久化。 */
+    private fun persistFolders() {                        // 持久化
+        viewModelScope.launch {                          // 协程中
+            prefs.setKbFoldersJson(JSONArray().apply {    // 编码
+                _folders.value.forEach { f ->             // 遍历
+                    put(org.json.JSONObject().apply { put("name", f.name); put("localOnly", f.localOnly); put("folderId", f.folderId) })  // 逐条
+                }
+            }.toString())
+        }
     }
 }

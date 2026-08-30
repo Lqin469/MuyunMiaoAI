@@ -19,6 +19,10 @@ interface NoteDao {                                        // 笔记数据访问
     @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY pinned DESC, updatedAt DESC")  // SQL：过滤软删除 + 排序
     fun observeActive(): Flow<List<Note>>                  // 返回 Flow：数据变化时自动推送（响应式）
 
+    /** 观察回收站中的笔记（软删除的，按删除时间倒序，回收站页用）。 */
+    @Query("SELECT * FROM notes WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")  // SQL：只看软删除 + 排序
+    fun observeTrashed(): Flow<List<Note>>                 // 返回 Flow：回收站列表
+
     /** 观察单条笔记（编辑页实时加载用）。 */
     @Query("SELECT * FROM notes WHERE id = :id")           // SQL：按 ID 查单条
     fun observeById(id: Long): Flow<Note?>                 // 返回可空 Flow（删除后自动变 null）
@@ -34,6 +38,18 @@ interface NoteDao {                                        // 笔记数据访问
     /** 软删除一条笔记（写入删除时间，不物理删除，可回收）。 */
     @Query("UPDATE notes SET deletedAt = :ts WHERE id = :id")  // SQL：设置软删除时间
     suspend fun softDelete(id: Long, ts: Long)             // 按 ID 软删除
+
+    /** 从回收站恢复一条笔记（清空软删除时间）。 */
+    @Query("UPDATE notes SET deletedAt = NULL WHERE id = :id")  // SQL：清空软删除时间
+    suspend fun restore(id: Long)                          // 按 ID 恢复
+
+    /** 彻底删除一条笔记（回收站「彻底删除」用，物理删除）。 */
+    @Query("DELETE FROM notes WHERE id = :id")             // SQL：物理删除
+    suspend fun purge(id: Long)                            // 按 ID 彻底删除
+
+    /** 清空回收站（物理删除全部软删除笔记）。 */
+    @Query("DELETE FROM notes WHERE deletedAt IS NOT NULL")  // SQL：批量物理删除
+    suspend fun purgeTrashed()                             // 清空回收站
 
     /** 观察某条笔记的全部待办条目（按排序号升序）。 */
     @Query("SELECT * FROM todo_items WHERE noteId = :noteId ORDER BY `order` ASC")  // SQL：按所属笔记 + 排序

@@ -9,8 +9,10 @@ import com.memuo.core.db.entity.FileLocation              // 导入文件位置�
 import com.memuo.core.db.entity.IngestStatus              // 导入入库状态枚举
 import com.memuo.core.db.entity.KbChunk                   // 导入分块实体
 import com.memuo.core.db.entity.KbDocument                // 导入文档实体
+import com.memuo.core.storage.NotePrefs                    // 导入笔记偏好（自动入库开关）
 import com.memuo.core.storage.StorageProvider             // 导入存储提供者（解压临时目录）
 import kotlinx.coroutines.CoroutineScope                  // 导入 CoroutineScope：协程作用域
+import kotlinx.coroutines.flow.first                       // 导入 first：取流首值（读开关）
 import kotlinx.coroutines.launch                          // 导入 launch：启动协程
 import java.io.File                                       // 导入 File：本地文件
 import javax.inject.Inject                                // 导入 Inject：构造函数注入
@@ -29,6 +31,7 @@ class KnowledgeRepository @Inject constructor(           // 构造函数注入
     private val ocr: OcrEngine,                          // 注入 OCR 引擎（图片识别，M6）
     private val locationDao: FileLocationDao,            // 注入文件位置 DAO（不可解析兜底，R10）
     private val storage: StorageProvider,                // 注入存储提供者（解压临时目录）
+    private val notePrefs: NotePrefs,                    // 注入笔记偏好（自动入库开关）
 ) {
     /** 笔记自动入库使用的固定知识库 ID。 */
     companion object { const val NOTES_FOLDER = "notes" } // 笔记知识库标识
@@ -47,7 +50,9 @@ class KnowledgeRepository @Inject constructor(           // 构造函数注入
         scope.launch {                                    // 在作用域内启动
             bridge.changes.collect { change ->            // 收集事件流
                 when (change.action) {                    // 按动作分发
-                    NoteChanged.Action.CREATED, NoteChanged.Action.UPDATED -> ingestNote(change.noteId)  // 新建/更新→入库
+                    NoteChanged.Action.CREATED, NoteChanged.Action.UPDATED -> {  // 新建/更新
+                        if (notePrefs.autoIngest.first()) ingestNote(change.noteId)  // 开关开启才自动入库
+                    }
                     NoteChanged.Action.DELETED -> kbDao.deleteChunksByDoc(docIdOf(change.noteId))  // 删除→移除分块
                 }
             }

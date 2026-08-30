@@ -31,6 +31,25 @@ android {                                              // Android 构建配置�
     kotlinOptions {                                    // Kotlin 编译选项
         jvmTarget = "17"                               // Kotlin 也编译为 Java 17 字节码
     }
+
+    signingConfigs {                                   // 签名配置（正式签名接入）
+        create("release") {                            // release 签名：读本地 keystore.properties（不入库）
+            val props = java.util.Properties().apply { // 加载本地签名属性
+                val f = rootProject.file("keystore.properties")  // 签名属性文件（已被 .gitignore 忽略）
+                if (f.exists()) load(f.inputStream())  // 存在才加载（缺失则留空，构建时报错可感知）
+            }
+            storeFile = file(props.getProperty("storeFile", ""))        // keystore 路径（D:/LQYMYH/keystores/yzqy.jks）
+            storePassword = props.getProperty("storePassword", "")      // 库口令（yzqy）
+            keyAlias = props.getProperty("keyAlias", "")                // 别名（yzqy）
+            keyPassword = props.getProperty("keyPassword", "")          // 密钥口令（yzqy）
+        }
+    }
+
+    buildTypes {                                       // 构建类型
+        getByName("release") {                         // release：使用正式签名（以后产物签名永不变）
+            signingConfig = signingConfigs.getByName("release")  // 绑定签名
+        }
+    }
 }
 
 dependencies {                                         // 本模块依赖列表
@@ -56,7 +75,6 @@ dependencies {                                         // 本模块依赖列表
     // ---- 模块装配（依赖方向：feature → core → 基础设施）----
     implementation(project(":feature:notes"))          // 笔记业务模块（常规备忘录）
     implementation(project(":feature:chat"))           // 对话业务模块（AI 对话）
-    implementation(project(":feature:filesearch"))     // 文件检索业务模块（含进度条 UI）
     implementation(project(":feature:settings"))       // 设置业务模块（提供 SearchSettings 实现）
     implementation(project(":core:search"))            // 搜索能力模块（许可闸门/进度契约）
     implementation(project(":core:ai:engine"))         // AI 引擎模块（ChatEngine/SSE）
@@ -66,4 +84,5 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:models"))            // 模型管理模块（下载/导入/硬件评估）
     implementation(project(":core:db"))                // 数据库模块（Room 全库）
     implementation(project(":core:storage"))           // 存储抽象模块（StorageProvider）
+    implementation(project(":core:ui"))                // 共享 UI 模块（主题/组件/图标/Toast）
 }
