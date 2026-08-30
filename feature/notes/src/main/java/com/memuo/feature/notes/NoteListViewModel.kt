@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted              // 导入 SharingStar
 import kotlinx.coroutines.flow.StateFlow                   // 导入 StateFlow：只读状态流
 import kotlinx.coroutines.flow.stateIn                     // 导入 stateIn：冷流转热状态流
 import kotlinx.coroutines.launch                           // 导入 launch：启动协程
+import kotlinx.coroutines.flow.first                       // 导入 first：取流首值（清空回收站前取 ID）
 import javax.inject.Inject                                 // 导入 Inject：构造函数注入
 
 /**
@@ -74,9 +75,11 @@ class NoteListViewModel @Inject constructor(             // 构造函数注入
     }
 
     /** 从回收站恢复一条笔记。 */
+    /** 从回收站恢复一条笔记。 */
     fun restoreNote(id: Long) {                          // 恢复笔记
         viewModelScope.launch {                          // 协程中执行
             noteDao.restore(id)                          // 清空软删除时间
+            bridge.emitChanged(id, NoteChanged.Action.UPDATED)  // 发布更新事件，知识库重新入库
         }
     }
 
@@ -84,16 +87,14 @@ class NoteListViewModel @Inject constructor(             // 构造函数注入
     fun purgeNote(id: Long) {                            // 彻底删除
         viewModelScope.launch {                          // 协程中执行
             noteDao.purge(id)                            // 物理删除
+            bridge.emitChanged(id, NoteChanged.Action.DELETED)  // 发布删除事件，知识库清理对应分块/文档
         }
     }
 
     /** 清空回收站。 */
     fun emptyTrash() {                                   // 清空回收站
         viewModelScope.launch {                          // 协程中执行
-            noteDao.purgeTrashed()                       // 批量物理删除
-        }
-    }
-
+            val trashedIds = noteDao.observeTrashed().first().map { it.id }  // 清空前先取全部软删除 ID
     /** 更新笔记正文（保存时调用）。 */
     fun updateContent(id: Long, title: String, content: String) {  // 更新内容方法
         viewModelScope.launch {                          // 协程中执行

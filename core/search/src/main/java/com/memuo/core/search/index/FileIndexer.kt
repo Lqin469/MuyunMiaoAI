@@ -34,7 +34,7 @@ sealed interface SearchScope {                             // 密封接口：检
  * 这是「绝不在后台偷偷搜索」约束的最后一道防线。
  */
 class UnauthorizedSearchException(requestId: String) :     // 自定义异常类：搜索未获授权时抛出
-    IllegalStateException("搜索必须由用户显式触发（requestId=$requestId）；后台自动搜索默认禁用。")  // 带中文提示的异常信息
+    IllegalStateException("未授权搜索：$requestId。搜索必须由用户显式触发，且范围与提权等级必须匹配。")  // 带中文提示的异常信息
 
 /**
  * 文件索引器 —— 安全约束（强制）：

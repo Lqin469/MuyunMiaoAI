@@ -2,13 +2,13 @@ package com.memuo.core.lan                              // 声明包名：局域
 
 import kotlinx.coroutines.Dispatchers                      // 导入 Dispatchers：IO 调度器
 import kotlinx.coroutines.currentCoroutineContext          // 导入 currentCoroutineContext：协程上下文
-import kotlinx.coroutines.delay                            // 导入 delay：速度采样间隔
 import kotlinx.coroutines.isActive                          // 导入 isActive：协程存活判断（支持取消=暂停）
 import kotlinx.coroutines.withContext                      // 导入 withContext：切换调度器
 import org.json.JSONObject                                 // 导入 JSONObject：构造 SEND 头
 import java.io.BufferedInputStream                         // 导入 BufferedInputStream：缓冲读响应
 import java.io.BufferedOutputStream                        // 导入 BufferedOutputStream：缓冲写数据
 import java.io.File                                        // 导入 File：待发送文件
+import java.net.InetSocketAddress                           // 导入 InetSocketAddress：连接超时用
 import java.net.Socket                                    // 导入 Socket：TCP 客户端
 import javax.inject.Inject                                // 导入 Inject：构造函数注入
 import javax.inject.Singleton                             // 导入 Singleton：单例作用域
@@ -38,10 +38,12 @@ class TransferClient @Inject constructor() {             // 构造函数注入�
     ): TransferResult = withContext(Dispatchers.IO) {    // IO 线程执行
         val fileId = LanProtocol.fileIdOf(file)          // 生成 fileId
         runCatching {                                    // 容错（连接/IO 异常）
-            Socket(device.ip, device.port).use { socket ->  // 建立 TCP 连接
-                socket.soTimeout = 30_000                // 读超时 30s（防挂死）
-                val output = BufferedOutputStream(socket.getOutputStream())  // 输出流
-                val input = BufferedInputStream(socket.getInputStream())     // 输入流
+            val socket = Socket()                        // 创建 TCP 客户端
+            socket.connect(InetSocketAddress(device.ip, device.port), 10_000)  // 连接超时 10s
+            socket.use { sock ->                         // 用后即关
+                sock.soTimeout = 30_000                  // 读超时 30s（防挂死）
+                val output = BufferedOutputStream(sock.getOutputStream())  // 输出流
+                val input = BufferedInputStream(sock.getInputStream())     // 输入流
 
                 // ① 断点查询：服务端已有多少字节
                 output.write("QUERY $fileId\n".toByteArray()); output.flush()  // 发 QUERY
@@ -61,7 +63,14 @@ class TransferClient @Inject constructor() {             // 构造函数注入�
 
                 // ③ 流式发送文件内容（从 start 偏移读）
                 file.inputStream().use { fis ->          // 打开文件
-                    if (start > 0) fis.skip(start)       // 跳到续传偏移
+                    if (start > 0) {                     // 跳到续传偏移（skip 可能跳不足，循环跳过）
+                        var toSkip = start               // 剩余待跳过字节
+                        while (toSkip > 0) {             // 循环跳过
+                            val skipped = fis.skip(toSkip)  // 跳一次
+                            if (skipped <= 0) throw java.io.IOException("无法跳过文件偏移")  // 跳不动则失败
+                            toSkip -= skipped            // 扣减
+                        }
+                    }
                     val buffer = ByteArray(LanProtocol.BUFFER_SIZE)  // 发送缓冲
                     var sent = start                     // 已发送计数
                     var windowSent = 0L                  // 速度采样窗口字节

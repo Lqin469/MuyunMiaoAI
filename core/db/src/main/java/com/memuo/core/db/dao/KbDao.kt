@@ -34,6 +34,10 @@ interface KbDao {                                          // 知识库数据访
     /** 删除某文档的全部分块（重新入库前先清空，保证幂等）。 */
     @Query("DELETE FROM kb_chunks WHERE docId = :docId")   // SQL：按文档删除分块
     suspend fun deleteChunksByDoc(docId: String)           // 清空旧分块
+    /** 删除某文档记录（笔记/文件从知识库移除时调用）。 */
+    @Query("DELETE FROM kb_documents WHERE docId = :docId")  // SQL：按文档删除记录
+    suspend fun deleteDocument(docId: String)           // 删除文档记录
+
 
     /** 批量插入分块。 */
     @Insert(onConflict = OnConflictStrategy.REPLACE)       // 插入，冲突替换

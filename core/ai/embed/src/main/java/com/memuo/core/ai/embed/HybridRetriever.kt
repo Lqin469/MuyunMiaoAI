@@ -31,7 +31,12 @@ class HybridRetriever @Inject constructor(               // 构造函数注入
         val candidates = kbDao.chunksByFolder(folderId)   // 取该知识库全部分块（候选集）
 
         val semantic = candidates                          // 语义检索
-            .map { it to cosine(it.embedding.toFloats(), qVec) }  // 计算每条分块与问题的余弦相似度
+            .map { c ->                                   // 逐块计算相似度
+                val emb = c.embedding.toFloats()          // 反序列化块向量
+                // 维度不一致（嵌入模型升级后旧数据）时给 0 分，避免数组越界崩溃
+                val sim = if (emb.size == qVec.size) cosine(emb, qVec) else 0f  // 维度匹配才算相似度
+                c to sim                                  // 分块与相似度配对
+            }
             .sortedByDescending { it.second }              // 相似度降序
             .take(topK * 2)                                // 取前 2*topK 作为语义候选
 

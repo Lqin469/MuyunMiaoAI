@@ -31,14 +31,14 @@ class MnnEmbeddingProvider @Inject constructor(          // 构造函数注入
     private fun modelConfig(): File = File(storage.modelsDir(), "embed/config.json")  // 模型 config.json
 
     /** 懒加载 embedding 模型，返回原生指针（0 = 未就绪）。 */
-    private fun ensureLoaded(): Long {                   // 懒加载
-        if (handle != 0L) return handle                  // 已加载直接返回
+    private suspend fun ensureLoaded(): Long = mutex.withLock {  // 加锁：并发调用只加载一次
+        if (handle != 0L) return@withLock handle          // 已加载直接返回
         val config = modelConfig()                       // config.json 路径
-        if (!config.exists()) return 0L                  // 无模型返回 0
+        if (!config.exists()) return@withLock 0L         // 无模型返回 0
         handle = runCatching {                           // 捕获加载异常
             MnnEmbeddingNative.createEmbedding(config.absolutePath)  // 创建 embedding
         }.getOrDefault(0L)                               // 失败返回 0
-        return handle                                     // 返回指针
+        handle                                          // 返回指针
     }
 
     /** 批量编码：模型就绪走 bge；未就绪降级为哈希（保证检索闭环不崩）。 */

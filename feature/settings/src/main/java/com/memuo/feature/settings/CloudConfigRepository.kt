@@ -33,19 +33,19 @@ class CloudConfigRepository @Inject constructor(         // 构造函数注入
 ) : CloudConfigProvider {                                // 实现云端配置提供者接口
 
     /** 加密偏好存储（apiKey 专用）：主密钥来自 Android Keystore，值用 AES256_GCM 加密。 */
+    /** 加密偏好存储（apiKey 专用）：主密钥来自 Android Keystore，值用 AES256_GCM 加密。 */
     private val securePrefs: SharedPreferences by lazy { // 懒加载加密存储
-        val masterKey = MasterKey.Builder(context)        // 构建主密钥（Keystore 生成，永不离开设备）
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM) // 用 AES256_GCM 方案
-            .build()                                      // 构建
-        EncryptedSharedPreferences.create(                // 创建加密偏好存储
-            context,                                      // 上下文
-            "secure_cloud_prefs",                         // 文件名
-            masterKey,                                    // 主密钥
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,   // 键名也加密
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM, // 值加密
-        )
-    }
-
+        runCatching {                                    // 容错：Keystore 损坏/个别设备失败时不崩溃
+            val masterKey = MasterKey.Builder(context)    // 构建主密钥（Keystore 生成，永不离开设备）
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)  // 用 AES256_GCM 方案
+                .build()                                  // 构建
+            EncryptedSharedPreferences.create(            // 创建加密偏好存储
+                context,                                  // 上下文
+                "secure_cloud_prefs",                     // 文件名
+                masterKey,                                // 主密钥
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,   // 键名也加密
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM, // 值加密
+            )
     /** 读取当前云端配置；未配置完整则返回 null（UI 据此提示"未配置"）。 */
     override suspend fun current(): CloudConfig? {       // 读取配置方法
         val prefs = context.cloudSettingsDataStore.data.first()  // 读 DataStore（非敏感项）

@@ -53,7 +53,11 @@ class KnowledgeRepository @Inject constructor(           // 构造函数注入
                     NoteChanged.Action.CREATED, NoteChanged.Action.UPDATED -> {  // 新建/更新
                         if (notePrefs.autoIngest.first()) ingestNote(change.noteId)  // 开关开启才自动入库
                     }
-                    NoteChanged.Action.DELETED -> kbDao.deleteChunksByDoc(docIdOf(change.noteId))  // 删除→移除分块
+                    NoteChanged.Action.DELETED -> {        // 删除
+                        val docId = docIdOf(change.noteId)  // 文档 ID
+                        kbDao.deleteChunksByDoc(docId)     // 删除→移除分块
+                        kbDao.deleteDocument(docId)         // 删除移除文档记录（避免孤儿文档）
+                    }
                 }
             }
         }
@@ -156,7 +160,7 @@ class KnowledgeRepository @Inject constructor(           // 构造函数注入
                     folderId = folderId,                  // 知识库 ID
                     seq = i,                              // 序号
                     text = t,                             // 文本
-                    embedding = vectors[i].toBytes(),     // 向量（序列化为 BLOB）
+                    embedding = vectors.getOrNull(i)?.toBytes(),  // 向量（序列化为 BLOB；数量不匹配时降级无向量）
                 )
             },
         )

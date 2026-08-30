@@ -135,15 +135,16 @@ class MainActivity : ComponentActivity() {               // 应用唯一 Activit
         enableEdgeToEdge()                               // 边到边显示（配合 imePadding 处理软键盘不顶页面）
         // 同步恢复上次主题（DataStore 首读极快，避免暗色/自定义主题用户启动时先闪默认样式）
         runBlocking {                                    // 同步初始化
-            MuyunThemeState.isDark = appPrefs.isDarkMode()  // 恢复暗色标记
-            val cfg = wallPrefs.config.first()           // 读一次壁纸/主题配置
-            if (cfg.source == WallpaperSource.PRESET) {  // 用户选过主题
-                MuyunThemeState.theme = ThemePresets.byId(cfg.presetId) ?: ThemePresets.default  // 恢复主题
+        runCatching {                                    // 容错：DataStore 读取异常不阻塞启动
+            runBlocking {                                // 同步初始化
+                MuyunThemeState.isDark = appPrefs.isDarkMode()  // 恢复暗色标记
+                val cfg = wallPrefs.config.first()       // 读一次壁纸/主题配置
+                if (cfg.source == WallpaperSource.PRESET) {  // 用户选过主题
+                    MuyunThemeState.theme = ThemePresets.byId(cfg.presetId) ?: ThemePresets.default  // 恢复主题
+                }
             }
         }
-        setContent { MuyunTheme { NoteApp(appPrefs, wallPrefs) } }  // 套品牌主题并渲染应用界面
-    }
-}
+
 
 /**
  * 应用根界面 —— 按路由定制顶栏 + 侧边抽屉 + 单 Activity 导航（HTML 界面原型整体迁移）。

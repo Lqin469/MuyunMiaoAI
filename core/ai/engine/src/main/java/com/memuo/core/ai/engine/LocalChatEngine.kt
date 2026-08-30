@@ -34,6 +34,7 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
     override val type: EngineType = EngineType.LOCAL      // 引擎类型 = 本地
 
     private val mutex = Mutex()                          // 互斥锁：防止并发重复加载
+    private val inferMutex = Mutex()                     // 互斥锁：防止并发推理/释放冲突（MNN 非线程安全）
     private var nativePtr: Long = 0L                     // 原生 Llm 指针（0 = 未加载）
     private var lastLoadError: String? = null            // 最近一次加载失败的具体原因（供诊断提示）
 
@@ -137,16 +138,18 @@ class LocalChatEngine @Inject constructor(               // 构造函数注入
             }
         }
 
-        val ok = withContext(Dispatchers.IO) {          // IO 线程阻塞生成
-            runCatching { MnnLlmNative.nativeResponse(ptr, userMsg, callback) }.getOrDefault(false)  // 生成
+        val ok = inferMutex.withLock {                  // 推理锁：同一时刻只允许一个推理
+            withContext(Dispatchers.IO) {               // IO 线程阻塞生成
+                runCatching { MnnLlmNative.nativeResponse(ptr, userMsg, callback) }.getOrDefault(false)  // 生成
+            }
         }
         if (ok) monitor.onDone() else monitor.onError("推理失败")  // 推理结束/出错（状态监控）
         trySend(ChatEvent.Done(if (ok) "stop" else "error"))  // 结束事件（原因）
         close()                                         // 关闭流
     }
 
-    /** 释放模型（设置页"卸载模型"时调用）。 */
-    fun release() {                                     // 释放方法
+    /** 释放模型（设置页"卸载模型"时调用）；与推理互斥，避免释放正在使用的 native 资源。 */
+    suspend fun release() = inferMutex.withLock {       // 推理锁：等待正在进行的推理结束
         val p = nativePtr                               // 取指针
         nativePtr = 0L                                  // 置空
         if (p != 0L) MnnLlmNative.nativeRelease(p)      // 释放 native 资源

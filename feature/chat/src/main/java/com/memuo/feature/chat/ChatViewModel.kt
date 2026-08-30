@@ -64,6 +64,8 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
     val attachments: StateFlow<Map<Long, List<Attachment>>> = _attachments.asStateFlow()  // 只读暴露
 
     private var convId: Long = 0L                         // 当前会话 ID
+    private var convCollectJob: kotlinx.coroutines.Job? = null  // 会话列表收集任务（防重复收集）
+    private var msgCollectJob: kotlinx.coroutines.Job? = null   // 消息列表收集任务（防重复收集）
 
     /** 加载会话列表（进入对话页时调用）。 */
     fun loadConversations() {                             // 加载会话列表

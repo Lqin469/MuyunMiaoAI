@@ -48,7 +48,7 @@ class CloudApiClient @Inject constructor(                 // 构造函数注入
      * @param config 云端配置（baseUrl/apiKey/model）
      * @param messages 消息列表（含最新用户消息）
      * @param system 系统提示词（可空）
-     * @param onDelta 每收到一段增量文本时回调（主线程）
+     * @param onDelta 每收到一段增量文本时回调（OkHttp 线程池；实现方用 trySend 保证线程安全）
      * @param onDone 结束回调（正常结束传 "stop"，异常传 "ERR:..."）
      */
     fun streamChat(                                       // 流式对话方法

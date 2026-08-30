@@ -105,7 +105,8 @@ class TransferServer @Inject constructor(                // 构造函数注入
             return
         }
         val fileId = meta.optString("id")                // 文件 ID
-        val name = meta.optString("name").ifBlank { "unnamed" }  // 文件名（防空）
+        val rawName = meta.optString("name").ifBlank { "unnamed" }  // 文件名（原始，未净化）
+        val name = sanitizeName(rawName)                 // 安全净化：防路径穿越（../../xxx）
         val size = meta.optLong("size")                  // 总大小
         val offset = meta.optLong("offset")              // 续传偏移
         if (fileId.isEmpty() || size <= 0) {             // 参数非法
@@ -137,11 +138,16 @@ class TransferServer @Inject constructor(                // 构造函数注入
 
         val ok = fail == null && received == size && part.length() == size  // 完整性校验
         if (ok) {                                        // 校验通过
-            val finalFile = File(inboxDir, name)         // 正式文件
-            if (finalFile.exists()) finalFile.delete()   // 同名覆盖
-            part.renameTo(finalFile)                     // .part → 正式名
-            upsertSession(fileId, name, size, received, SessionState.SUCCESS)  // 成功状态
-            socket.getOutputStream().use { it.write("OK $received\n".toByteArray()) }  // 回执
+            val finalFile = File(inboxDir, name)         // 正式文件（name 已经 sanitizeName 净化）
+            val deleted = if (finalFile.exists()) finalFile.delete() else true  // 同名先删
+            val moved = deleted && part.renameTo(finalFile)  // .part → 正式名（校验返回值）
+            if (moved) {                                 // 改名成功
+                upsertSession(fileId, name, size, received, SessionState.SUCCESS)  // 成功状态
+                socket.getOutputStream().use { it.write("OK $received\n".toByteArray()) }  // 回执
+            } else {                                     // 改名失败（磁盘满/占用等）
+                upsertSession(fileId, name, size, received, SessionState.FAILED)  // 失败状态
+                socket.getOutputStream().use { it.write("ERR 文件落盘失败\n".toByteArray()) }  // 回执
+            }
         } else {                                         // 失败（.part 保留供续传）
             upsertSession(fileId, name, size, received, SessionState.PAUSED)  // 暂停状态（可续传）
             socket.getOutputStream().use { it.write("ERR ${fail ?: "校验失败"}\n".toByteArray()) }  // 回执
@@ -150,6 +156,12 @@ class TransferServer @Inject constructor(                // 构造函数注入
 
     /** .part 断点文件路径（fileId 命名，与正式文件名解耦）。 */
     private fun partFile(fileId: String): File = File(inboxDir, "$fileId.part")  // .part 路径
+
+    /** 文件名净化：拒绝路径穿越字符，返回安全文件名。 */
+    private fun sanitizeName(raw: String): String {      // 净化文件名
+        val base = raw.replace('\\', '/').substringAfterLast('/').trim()  // 取最后一段路径
+        return if (base.isEmpty() || base == "." || base == "..") "unnamed" else base  // 非法名兜底
+    }
 
     /** 更新会话列表（按 fileId 去重）。 */
     private fun upsertSession(fileId: String, name: String, size: Long, received: Long, state: SessionState) {  // 更新会话

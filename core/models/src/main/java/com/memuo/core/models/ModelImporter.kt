@@ -6,6 +6,7 @@ import androidx.documentfile.provider.DocumentFile         // 导入 DocumentFil
 import com.memuo.core.storage.StorageProvider             // 导入存储提供者（模型目标目录）
 import kotlinx.coroutines.Dispatchers                      // 导入调度器（IO 线程复制大文件）
 import kotlinx.coroutines.withContext                      // 导入 withContext：切换调度器
+import org.json.JSONObject                                 // 导入 JSONObject：解析 config.json 的 is_visual
 import java.io.File                                        // 导入 File：本地文件
 import java.io.FileOutputStream                            // 导入 FileOutputStream：写文件
 import javax.inject.Inject                                 // 导入 Inject：构造函数注入
@@ -24,28 +25,40 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
     private val storage: StorageProvider,                // 注入存储提供者（决定目标目录）
 ) {
 
-    /** 检测目录是否为合法 MNN 模型目录（含 config.json + llm.mnn + llm.mnn.weight）。 */
-    /** MNN 模型必需文件（Qwen3.5 多模态 is_visual:true 需视觉文件，否则 load 失败）。 */
-    private val REQUIRED_FILES = listOf(                  // 必需文件清单
+    /** MNN 模型基础必需文件（纯文本 LLM 与多模态 VLM 都必需）。 */
+    private val BASE_FILES = listOf(                      // 基础文件清单
         "config.json", "llm.mnn", "llm.mnn.weight", "tokenizer.txt",  // 文本 LLM 核心
-        "visual.mnn", "visual.mnn.weight",               // 多模态视觉模型（is_visual:true 时 load 必需）
     )
 
+    /** 视觉模型附加文件（仅 config.json 中 is_visual:true 时必需）。 */
+    private val VISUAL_FILES = listOf("visual.mnn", "visual.mnn.weight")  // 多模态视觉模型附加文件
+
+    /** 读取 config.json 判断是否为多模态视觉模型。 */
+    private fun isVisualModel(dir: File): Boolean =       // 是否视觉模型
+        runCatching {
+            JSONObject(File(dir, "config.json").readText()).optBoolean("is_visual", false)  // 解析 is_visual 字段
+        }.getOrDefault(false)                             // 读取失败按纯文本处理
+
+    /** 当前模型目录应具备的必需文件清单（纯文本/多模态动态判定）。 */
+    private fun requiredFiles(dir: File): List<String> =  // 必需文件清单
+        BASE_FILES + if (isVisualModel(dir)) VISUAL_FILES else emptyList()  // 多模态才要求视觉文件
+
     fun detectMnnModel(dir: File): Boolean =             // 模型检测（单目录）
-        REQUIRED_FILES.all { File(dir, it).exists() }    // 必需文件齐全
+        requiredFiles(dir).all { File(dir, it).exists() }  // 必需文件齐全
 
     /** 返回目录中缺失的必需文件（诊断用，空列表 = 齐全）。 */
     fun missingFiles(dir: File): List<String> =          // 缺失文件诊断
-        REQUIRED_FILES.filterNot { File(dir, it).exists() }  // 返回缺失项
+        requiredFiles(dir).filterNot { File(dir, it).exists() }  // 返回缺失项
 
     /** 校验模型完整性：必需文件齐全 + 关键文件大小合理（M-027 增强，防复制中断产生不完整文件）。 */
     private fun verifyModel(dir: File): Boolean {        // 完整性校验
         if (!detectMnnModel(dir)) return false           // 必需文件齐全
+        val visual = isVisualModel(dir)                  // 是否多模态
         // 关键文件最小合理大小（Qwen3.5-0.8B 实测：weight 449MB / visual.weight 63MB / llm.mnn 2MB / visual.mnn 251KB）
         return File(dir, "llm.mnn.weight").length() > 100L * 1024 * 1024 &&      // 文本权重 >100MB
-            File(dir, "visual.mnn.weight").length() > 30L * 1024 * 1024 &&       // 视觉权重 >30MB
             File(dir, "llm.mnn").length() > 100L * 1024 &&                       // 模型结构 >100KB
-            File(dir, "visual.mnn").length() > 100L * 1024                      // 视觉结构 >100KB
+            (!visual || (File(dir, "visual.mnn.weight").length() > 30L * 1024 * 1024 &&  // 视觉权重 >30MB（仅多模态））
+                         File(dir, "visual.mnn").length() > 100L * 1024))                     // 视觉结构 >100KB（仅多模态）
     }
 
     /** 递归查找含 config.json + llm.mnn + llm.mnn.weight 的目录（最多 5 层，兼容 HF 缓存嵌套）。 */
@@ -93,10 +106,19 @@ class ModelImporter @Inject constructor(                 // 构造函数注入
     }
 
     /** 判断 DocumentFile 是否为合法模型目录（必需文件齐全：config.json + llm.mnn + llm.mnn.weight + tokenizer.txt）。 */
+    /** 判断 DocumentFile 是否为合法模型目录（基础文件齐全；视觉文件在复制后由 verifyModel 校验）。 */
     private fun isModelDir(doc: DocumentFile): Boolean {  // SAF 模型目录判断
         val names = doc.listFiles().mapNotNull { it.name }.toSet()  // 收集文件名
-        return REQUIRED_FILES.all { it in names }         // 必需文件齐全
+        return BASE_FILES.all { it in names }            // 基础必需文件齐全（视觉文件复制后校验）
     }
+
+
+
+
+
+
+
+
 
     /** 递归查找 SAF 目录树中的模型目录（最多 5 层，兼容 HF 缓存 `snapshots/_no_sha_` 嵌套）。 */
     private fun findModelDirInTree(doc: DocumentFile, depth: Int = 0): DocumentFile? {  // 递归查找

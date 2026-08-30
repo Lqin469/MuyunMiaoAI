@@ -138,7 +138,7 @@ fun KnowledgeScreen(                                      // 知识库页
                                 .size(32.dp)            // 32dp
                                 .clip(RoundedCornerShape(8.dp))  // 圆角 8
                                 .clickable {             // 点击删除
-                                    viewModel.deleteFolder(folder.name)  // 删除文件夹
+                                    viewModel.deleteFolder(folder.folderId)  // 按 folderId 删除（避免同名误删）
                                     toast.show("已删除")  // Toast（HTML 同款）
                                 }
                                 .padding(9.dp),         // 内边距
@@ -293,9 +293,9 @@ class KnowledgeViewModel @Inject constructor(            // 构造函数注入
     }
 
     /** 删除文件夹（HTML 条目删除按钮）。 */
-    fun deleteFolder(name: String) {                      // 删除文件夹
-        _folders.value = _folders.value.filterNot { it.name == name }  // 移除
-        persistFolders()                                  // 持久化
+    /** 删除文件夹（按 folderId，避免同名误删）。 */
+    fun deleteFolder(folderId: String) {                 // 删除文件夹
+        _folders.value = _folders.value.filterNot { it.folderId == folderId }  // 按 ID 移除
     }
 
     /** 文件夹列表持久化。 */

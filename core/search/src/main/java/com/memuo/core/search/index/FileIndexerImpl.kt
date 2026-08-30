@@ -49,10 +49,12 @@ class FileIndexerImpl @Inject constructor(               // 构造函数注入
         try {
             report(listener, session, SearchPhase.INITIALIZING, scanned, 0, null, startedAt)  // 阶段1：准备中
             val roots = resolveRoots(scope)               // 校验提权等级并解析扫描根目录（未达标抛异常）
+            // 先统计文件总数，保证进度条真实（ADR-002：百分比可见、DONE 时 percent=1）
+            val totalFiles = roots.sumOf { root -> root.walkTopDown().count { it.isFile } }.toLong()  // 文件总数
             val batch = ArrayList<FileLocation>(200)      // 批量缓冲（200 条一批落库）
 
             for (root in roots) {                         // 遍历每个根目录
-                report(listener, session, SearchPhase.SCANNING_DIRS, scanned, 0, root.absolutePath, startedAt)  // 阶段2：扫描
+                report(listener, session, SearchPhase.SCANNING_DIRS, scanned, totalFiles, root.absolutePath, startedAt)  // 阶段2：扫描
                 val it = root.walkTopDown().iterator()    // 深度优先遍历文件树
                 while (it.hasNext()) {                    // 逐文件处理
                     if (session.cancelled) { cancelled = true; break }  // 用户点了停止 → 立即退出
@@ -74,7 +76,7 @@ class FileIndexerImpl @Inject constructor(               // 构造函数注入
                         dao.upsertAll(batch)              // 批量落库
                         indexed += batch.size             // 计数
                         batch.clear()                     // 清空缓冲
-                        report(listener, session, SearchPhase.SCANNING_DIRS, scanned, 0, f.absolutePath, startedAt)  // 上报进度
+                        report(listener, session, SearchPhase.SCANNING_DIRS, scanned, totalFiles, f.absolutePath, startedAt)  // 上报进度
                     }
                 }
                 if (cancelled) break                      // 取消则停止后续根目录
@@ -83,14 +85,14 @@ class FileIndexerImpl @Inject constructor(               // 构造函数注入
                 dao.upsertAll(batch)                      // 落库
                 indexed += batch.size                     // 计数
             }
-            report(listener, session, SearchPhase.INDEXING_DB, scanned, 0, null, startedAt)  // 阶段3：写入完成
+            report(listener, session, SearchPhase.INDEXING_DB, scanned, totalFiles, null, startedAt)  // 阶段3：写入完成
             if (cancelled) {                              // 用户取消
-                report(listener, session, SearchPhase.CANCELLED, scanned, 0, null, startedAt)  // 上报取消
+                report(listener, session, SearchPhase.CANCELLED, scanned, totalFiles, null, startedAt)  // 上报取消（percent 停在当前值）
             } else {                                      // 正常完成
-                report(listener, session, SearchPhase.DONE, scanned, 0, null, startedAt)  // 上报完成
+                report(listener, session, SearchPhase.DONE, scanned, scanned, null, startedAt)  // 上报完成（percent=1）
             }
         } catch (e: Exception) {                          // 任何异常
-            report(listener, session, SearchPhase.FAILED, scanned, 0, e.message ?: "未知错误", startedAt)  // 上报失败
+            report(listener, session, SearchPhase.FAILED, scanned, 0, e.message ?: "未知错误", startedAt)  // 上报失败（percent=0）
         } finally {
             sessions.remove(session.requestId)            // 移除活跃会话
         }
@@ -113,13 +115,13 @@ class FileIndexerImpl @Inject constructor(               // 构造函数注入
         is SearchScope.AppScoped -> scope.roots           // L0：应用私有目录（无需提权）
         is SearchScope.UserStorage -> {                   // L1：用户目录全量
             if (privilege.currentLevel() == PrivilegeManager.Level.NONE) {  // 未提权
-                throw UnauthorizedSearchException("${scope.allowedTopDirs}")  // 拒绝（无 requestId 场景用目录标识）
+                throw UnauthorizedSearchException("UserStorage 需要 Shizuku ADB 或 ROOT 权限")  // 拒绝
             }
             scope.allowedTopDirs.map { File(it) }         // 白名单顶层目录
         }
         is SearchScope.FullDisk -> {                      // L2：全盘
             if (privilege.currentLevel() != PrivilegeManager.Level.SHIZUKU_ROOT) {  // 非 root
-                throw UnauthorizedSearchException("${scope.allowedTopDirs}")  // 拒绝
+                throw UnauthorizedSearchException("FullDisk 需要 Shizuku ROOT 权限")  // 拒绝
             }
             scope.allowedTopDirs.map { File(it) }         // 白名单顶层目录
         }

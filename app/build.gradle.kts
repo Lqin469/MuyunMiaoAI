@@ -3,6 +3,8 @@
 // 作用：声明应用自身的构建参数（包名/SDK 版本/依赖），产出可安装的 APK
 // ============================================================
 
+import java.util.Properties                           // 签名配置读取 keystore.properties 用
+
 plugins {                                              // 本模块启用的插件
     alias(libs.plugins.android.application)            // Android 应用插件（生成 APK）
     alias(libs.plugins.kotlin.android)                 // Kotlin 支持
@@ -34,7 +36,7 @@ android {                                              // Android 构建配置�
 
     signingConfigs {                                   // 签名配置（正式签名接入）
         create("release") {                            // release 签名：读本地 keystore.properties（不入库）
-            val props = java.util.Properties().apply { // 加载本地签名属性
+            val props = Properties().apply {          // 加载本地签名属性
                 val f = rootProject.file("keystore.properties")  // 签名属性文件（已被 .gitignore 忽略）
                 if (f.exists()) load(f.inputStream())  // 存在才加载（缺失则留空，构建时报错可感知）
             }
