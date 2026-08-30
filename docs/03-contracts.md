@@ -1,9 +1,9 @@
 # 03 · 接口契约（单一事实源）
 
 > 本文是模块接口的权威文档。**改接口先写 ADR，再改代码，然后同步本文**。
-> M0 状态：仅 core:search 的搜索契约已定义；其余模块接口在各自阶段实现时补录。
+> 状态：M0-M8 全部实现完毕，以下契约均与当前代码一致（2026-08-31 核对）。
 
-## 搜索契约（core:search · M0 已定）
+## 搜索契约（core:search · M0/M7 已实现）
 
 ### SearchConsentGate（许可闸门）
 
@@ -105,27 +105,84 @@ class CustomStorageProvider(customRoot: File): StorageProvider        // 用户�
 object StorageMigrator { fun migrate(from: File, to: File): Int }     // 复制 + 逐文件大小校验
 ```
 
-## 数据库契约（core:db · M1 已定）
+## 提权契约（core:search · M7 已实现）
 
 ```kotlin
-@Database(entities=[Note,TodoItem,Conversation,ChatMessage,ConsentAuditEntity], version=1)
-abstract class AppDatabase : RoomDatabase()          // 路径走 StorageProvider.dbDir()/muyunmiao.db
-interface NoteDao          // observeActive / observeById / upsert / softDelete / observeTodos / upsertTodo
-interface ChatDao          // observeConversations / upsertConversation / observeMessages / insertMessage / touch
-interface ConsentAuditDao  // insert / recent（consent_audit 落库）
+enum class PrivilegeLevel { NONE, SHIZUKU_ADB, SHIZUKU_ROOT }        // L0 / L1 / L2
+class PrivilegeManager(context: Context) {
+    val level: StateFlow<PrivilegeLevel>                              // binder 监听实时刷新
+    val authorized: StateFlow<Boolean>
+    fun currentLevel(): PrivilegeLevel                                // NONE / SHIZUKU_ADB / SHIZUKU_ROOT
+    fun requestAdbPermission(onResult: (Boolean) -> Unit)             // 弹 Shizuku 授权页
+    fun shell(command: String): String                                // libsu root 执行（L2）
+}
+// 判定规则：Shizuku.pingBinder() && Shell.isAppGrantedRoot()==true → SHIZUKU_ROOT
 ```
 
-## 对话引擎契约（core:ai:engine · M3 已定）
+## 数据库契约（core:db · 当前 version = 4）
+
+```kotlin
+@Database(
+    entities = [Note, TodoItem, Conversation, ChatMessage, KbDocument, KbChunk, KbMemory, FileLocation, ConsentAuditEntity],
+    version = 4, exportSchema = false,
+)   // 路径走 StorageProvider.dbDir()/muyunmiao.db；升级用 fallbackToDestructiveMigration（发布前改显式 Migration）
+interface NoteDao          // observeActive / observeTrashed / observeById / upsert / softDelete / restore / purge / purgeTrashed / observeTodos / upsertTodo / setTodoDone / deleteTodo
+interface ChatDao          // observeConversations / upsertConversation / observeMessages / insertMessage / touch / deleteConversation / deleteMessage
+interface KbDao            // observeDocuments / observeChunksByFolder / upsertDocument / upsertChunk / countChunks / searchChunksLike
+interface MemoryDao        // observeRecent / insert / delete / search
+interface FileLocationDao  // upsertAll / fuzzySearch（name/path LIKE）
+interface ConsentAuditDao  // insert / recent
+```
+
+## 对话引擎契约（core:ai:engine · M3/M6/M-027 已实现）
 
 ```kotlin
 sealed interface ChatEvent { data class Delta(text: String): ChatEvent; data class Done(reason: String): ChatEvent }
 interface ChatEngine { val type: EngineType; fun streamChat(messages, system?): Flow<ChatEvent> }
+enum class EngineType { CLOUD, LOCAL }
+
+// 引擎设置与路由（M-010）
+interface EngineSettings { val engineType: StateFlow<EngineType>; suspend fun setEngineType(type: EngineType) }
+class EngineRouter(settings, localEngine, cloudEngine) : ChatEngine   // 按设置路由；切本地前检查模型就绪
+
+// 云端配置（R1）
 data class CloudConfig(baseUrl, apiKey, model)
-interface CloudConfigProvider { suspend fun current(): CloudConfig? }   // 由 feature:settings 实现
-class CloudChatEngine : ChatEngine    // OpenAI 兼容 SSE（本地 MNN 引擎 M6 补）
+interface CloudConfigProvider { suspend fun current(): CloudConfig? }  // feature:settings 实现，apiKey 加密存储
+class CloudApiClient          // OpenAI 兼容 SSE；超时 10s/120s；4xx 不重试、5xx/网络指数退避 3 次（1s→2s→4s+抖动）
+
+// 本地引擎（M6/M-014/M-033）
+class LocalChatEngine : ChatEngine       // MNN-LLM JNI；加载前内存预检（权重×1.5+256MB）；isModelLoaded()
+
+// 运行状态监控（M-027）与诊断（M-031）
+data class EngineRuntimeState(idle/loading/running/error, loadMs, firstTokenMs, tokenCount, error?)
+class EngineRuntimeMonitor { val state: StateFlow<EngineRuntimeState> }
+class ModelLoadDiagnostics { suspend fun runDiagnostics(): String }   // 7 段诊断日志；已加载则跳过 nativeInit（防 OOM）
 ```
 
-## 嵌入与检索契约（core:ai:embed / core:ingest · M4 已定）
+## 设备契约（core:device · M-027 新增）
+
+```kotlin
+data class DeviceSnapshot(manufacturer, model, androidVersion, sdkInt, cpu: CpuInfo, memory: MemoryInfo, storage: StorageInfo)
+enum class CheckLevel { PASS, WARN, FAIL }
+data class CheckResult(id, label, value, level, hint)
+class DeviceInfoProvider { suspend fun snapshot(): DeviceSnapshot }   // 型号/系统/CPU 主频(sysfs)/内存/存储
+class CapabilityChecker { fun checkAll(info: DeviceSnapshot): List<CheckResult> }  // 64 位必需/RAM≥3GB/存储≥512MB
+```
+
+## 局域网契约（core:lan · M-027 新增）
+
+```kotlin
+object LanProtocol { const val SERVICE_TYPE = "_muyunmiao._tcp"; const val PORT = 21066; fun fileIdOf(file): String }
+data class LanDevice(name, ip, port, version)
+enum class SessionState { IDLE, RUNNING, PAUSED, SUCCESS, FAILED }
+data class SendSession / ReceiveSession(fileId, name, size, sent/received, speedBps, state)
+class TransferRepository {
+    val devices: StateFlow<List<LanDevice>>; val sendSession: StateFlow<SendSession?>; val receiveSessions: StateFlow<List<ReceiveSession>>
+    fun startAll() / stopAll() / send(device, file) / pause() / resume() / clearSend()
+}   // 协议：QUERY fileId → HAVE bytes（断点锚点）；SEND {id,name,size,offset} + 二进制流 → OK/ERR
+```
+
+## 嵌入与检索契约（core:ai:embed / core:ingest · M4 已实现）
 
 ```kotlin
 // core:ai:embed
@@ -148,24 +205,43 @@ class MemoryExtractor { suspend fun extract(messages: List<ChatMessage>): List<M
 class MemoryStore { suspend fun remember(messages): Int; suspend fun search(keyword, limit): List<KbMemory> }  // 嵌入落库 + 关键词检索
 ```
 
-## 模型契约（core:models · M6 已定）
+## 模型契约（core:models · M6/M-027/M-035 已实现）
 
 ```kotlin
 // core:models
 enum class ModelKind { LLM, EMBEDDING, OCR, VISION_LLM }
 enum class ModelSource { CATALOG, LOCAL_IMPORT }
-data class ModelItem(id, name, kind, quant, source, downloadUrl?, sha256?, sizeBytes, minRamMb, minStorageMb, cpuNote, gpuNote)
-data class HardwareProfile(totalRamMb, availRamMb, totalStorageMb, cpuCores, abi, gpu)
-class ModelRepository { val catalog: List<ModelItem>; fun probeHardware(): HardwareProfile; fun canRun(item, hw): RunStatus }
-class ModelImporter { fun importFromPath(path: String): ModelItem? }   // 识别 MNN_DIR / GGUF
+data class ModelItem(id, name, format, sizeGb, arch, needFp16, time)          // 模型列表条目（DataStore JSON 持久化）
+data class HardwareProfile(totalRamMb, availRamMb, totalStorageMb, cpuCores, abi, gpu)  // 真物理内存（非 JVM 堆）
+class ModelRepository { fun probeHardware(): HardwareProfile }                // ActivityManager.totalMem + StatFs
+class ModelImporter {
+    fun hasLocalModel(): Boolean
+    suspend fun importMnnToAppDir(dir: File): Boolean                          // 复制到 modelsDir()/llm/
+    suspend fun importFromUri(context, uri): Boolean                           // SAF 目录检测+复制
+    suspend fun importGguf(context, uri): Boolean                              // 复制到 modelsDir()/gguf/
+    fun listLocalModels(): List<LocalModelInfo>                                // 扫 llm/ + gguf/
+    suspend fun deleteLocalModel(format, name): Boolean                        // 先 release 再删
+    fun verifyModel(dir): Boolean                                              // 大小完整性校验（visual>30MB/llm>100KB）
+}
+data class LocalModelInfo(id, name, format, sizeBytes, runnable)               // MNN runnable=true / GGUF=false
 
 // core:ingest
-interface OcrEngine { suspend fun recognize(file: File): String }    // 可换 MNN-PaddleOCR / ML Kit / Tesseract
+interface OcrEngine { suspend fun recognize(file: File): String }    // 桩实现（返回提示文本），待 MNN-PaddleOCR
 ```
 
-## 预留接口（后续阶段补录）
+## 工具调用契约（core:ai:tools · M7 已实现）
 
-| 接口 | 归属 | 阶段 |
+```kotlin
+interface AiTool { val name: String; val desc: String; suspend fun invoke(args: Map<String, String>): String }
+class ToolCallingBus { fun register(tool: AiTool); suspend fun dispatch(call: ToolCall): String; fun extractCalls(text: String): List<ToolCall> }
+// 内置工具：search_file（搜索本地文件返回路径）/ tell_location（告知文件位置）
+// 标记协议：[[name:args]]（本地/云端引擎共用；升级完整 function calling 登记后续）
+```
+
+## 预留接口（登记后续）
+
+| 接口 | 归属 | 说明 |
 |---|---|---|
-| `PrivilegeManager` | core:search | M7 |
-| `ToolCallingBus` / `AiTool` | core:ai:tools | M7 |
+| `SyncApi` | core:ai:engine | 云端数据同步骨架（push/pull 快照、备份上传）——仅设计，未实现 |
+| GGUF 推理运行时 | core:models | 依赖 llama.cpp，登记 M-028 |
+| bge 嵌入 / MNN-PaddleOCR | core:ai:embed / ingest | 模型未导出，当前降级 SimpleHash / 桩 |

@@ -36,23 +36,28 @@
 
 ## 快速开始
 
-1. 用 **Android Studio**（Ladybug+，JDK 17）打开本目录，等待 Gradle Sync（首次需下载 Gradle 8.13 与依赖）；
-2. 若本机已装 Gradle，可在根目录执行 `gradle wrapper --gradle-version 8.13` 生成 wrapper；
-3. 选择 `app` 运行到设备（minSdk 26 / Android 8.0+）。
+1. 用 **Android Studio**（JDK 17）打开本目录，等待 Gradle Sync（首次需下载 Gradle 8.13 与依赖）；
+2. 选择 `app` 运行到设备（minSdk 26 / Android 8.0+）；本地构建见「常见问题」节。
 
 ```bash
-# 命令行构建（需 Android SDK 环境变量）
-gradle :app:assembleDebug :app:lintDebug
+# 命令行构建（本机环境重建后：JAVA_HOME 已持久化到用户级）
+cd /d D:\LQYMYH\ai备忘录\MuyunMiaoAI
+gradlew.bat :app:assembleDebug
+# 正式签名产物（keystore 见 docs/02-technical-choices.md D-008）
+gradlew.bat :app:assembleRelease
 ```
 
-## 常见问题：gradle wrapper jar 为什么没有提交？
+> ⚠️ 已知环境坑：在 WorkBuddy 会话内运行 Gradle 会因 `.lock` 跨进程被系统拦截而失败（详见 docs/README.md 或总流程日志 §2.7）；**请在普通终端（cmd/PowerShell）执行上述命令**。
 
-- **现象**：仓库里只有 `gradle/wrapper/gradle-wrapper.properties`，没有 `gradle-wrapper.jar`；
-- **原因**：`gradle-wrapper.jar` 是**二进制文件**，需要本机已安装 Gradle（或 IDE）才能生成；当前开发环境未安装 Gradle，无法生成该二进制，故未提交；
-- **解决方案（二选一）**：
-  1. 用 **Android Studio 打开工程并同步**——AS 会自动补全 wrapper 并下载 Gradle 8.13；
-  2. 在已安装 Gradle 的机器执行 `gradle wrapper --gradle-version 8.13` 生成 wrapper 文件；
-- **对 CI 的影响**：无。CI 通过 `gradle/actions/setup-gradle` 显式指定 Gradle 8.13，不依赖 wrapper jar。
+## 常见问题
+
+### gradle wrapper 为什么有时报 SSL 错误？
+- 首次运行 `gradlew` 需从 services.gradle.org 下载发行包，本机网络拦截会导致 `PKIX path building failed`；
+- 解决：用本机已装的 Gradle 直连（`C:\Users\Administrator\.workbuddy\binaries\gradle\gradle-8.13\bin\gradle.bat`），或预置发行包到 `~/.gradle/wrapper/dists/gradle-8.13-bin/`（见总流程日志 §2.6）。
+
+### 为什么「签名不一致」无法覆盖安装？
+- v0.4.1 起改用正式签名 keystore（`D:\LQYMYH\keystores\yzqy.jks`，alias/password=yzqy）；
+- 旧版（≤v0.4.0）为 debug 签名，**需卸载重装一次**；此后升级签名永不变（详见 docs/02-technical-choices.md D-008）。
 
 ## 安全规范（推送 GitHub 前必读）
 
@@ -71,36 +76,42 @@ git config core.hooksPath scripts/hooks
 ## 项目结构
 
 ```
-app/                        # 应用壳（单 Activity + Compose）
+app/                        # 应用壳（单 Activity + Compose + 路由/抽屉）
 core/                       # 能力层（只依赖接口）
-  storage/                  # 存储抽象与自定义目录（R4/R5）
-  db/                       # Room 全库 + FTS5（M1 实现）
-  ai/engine/                # ChatEngine 双实现：MNN 本地 / OpenAI 兼容云端
+  ui/                       # 共享 UI：主题（亮暗 + 17 套）/42 图标/通用组件/壁纸（M8.5 新增）
+  storage/                  # 存储抽象与自定义目录（R4/R5）+ 偏好（AppPrefs/WallpaperPrefs/NotePrefs）
+  db/                       # Room 全库（9 表，version 4）
+  device/                   # 设备信息检测 + 满足度判定（M-027 新增）
+  lan/                      # 局域网发现 + TCP 传输（NSD + 断点续传，M-027 新增）
+  ai/engine/                # ChatEngine 双实现：MNN 本地 / OpenAI 兼容云端 + 引擎路由/监控/诊断
   ai/embed/                 # 双轨 Embedding + 混合检索
   ai/tools/                 # 工具调用总线（search_file 等）
   ai/memory/                # 会话自动记忆（R6）
   ingest/                   # 文档/图片/压缩包解析入库（R8/R9）
-  search/                   # 文件索引 + 许可闸门 + 进度契约（R11）
-  models/                   # 模型管理：下载/硬件评估/本地导入（R2/R3）
+  search/                   # 文件索引 + 许可闸门 + 提权（PrivilegeManager）
+  models/                   # 模型导入/删除/硬件评估（R2/R3）
 feature/                    # 业务层
-  notes/  chat/  knowledge/  settings/
+  notes/  chat/  settings/  # 知识库 UI 在 settings 内实现；feature:knowledge 为空壳占位
 scripts/                    # 安全自查脚本与 git 钩子
-docs/                       # 文档驱动开发（详见 docs/00-overview.md）
-PROMPT.md                   # 项目初始化与安全规范整合提示词
+docs/                       # 文档驱动开发（入口见 docs/README.md）
 ```
 
 ## 文档
 
-- [AGENTS.md](AGENTS.md) — **AI 协作者强制红线（严禁上传密钥等）**
-- [docs/00-overview.md](docs/00-overview.md) — 项目总纲与需求索引
+- [docs/README.md](docs/README.md) — **文档体系总纲（从这开始读）**
+- [docs/00-overview.md](docs/00-overview.md) — 项目总纲与需求索引（R1-R12 状态）
 - [docs/01-architecture.md](docs/01-architecture.md) — 架构与模块边界
+- [docs/02-technical-choices.md](docs/02-technical-choices.md) — 技术选型与否决记录
 - [docs/03-contracts.md](docs/03-contracts.md) — 接口契约（单一事实源）
 - [docs/04-database.md](docs/04-database.md) — 数据表设计
 - [docs/05-model-hardware.md](docs/05-model-hardware.md) — 模型与硬件评估
+- [docs/adl/](docs/adl/) — 架构决策记录（ADR-001/002）
+- [docs/devlog/](docs/devlog/) — 模块开发记录（R12 强制归档）
 - [docs/privacy-search-consent.md](docs/privacy-search-consent.md) — 搜索隐私约束（必读）
+- [docs/code-review-guide.md](docs/code-review-guide.md) — 代码审查标准与流程
 - [docs/security-git-secrets.md](docs/security-git-secrets.md) — 密钥检查与清除
 - [docs/security-pre-push.md](docs/security-pre-push.md) — 推送前自查流程
-- [docs/devlog/](docs/devlog/) — 模块开发记录（R12 强制归档）
+- [AGENTS.md](AGENTS.md) — **AI 协作者强制红线（严禁上传密钥等）**
 
 ## 致谢与合规
 
@@ -110,4 +121,4 @@ PROMPT.md                   # 项目初始化与安全规范整合提示词
 
 ## 路线图
 
-M0 基建 ✅ → M1 存储/数据 → M2 备忘录 → M3 云端对话 → M4 知识库 → M5 记忆 → M6 本地引擎 → M7 文件检索 → M8 发布（详见 docs/00-overview.md §7）
+M0 基建 ✅ → M1 存储/数据 ✅ → M2 备忘录 ✅ → M3 云端对话 ✅ → M4 知识库 ✅ → M5 记忆 ✅ → M6 本地引擎 ✅ → M7 文件检索 ✅ → M8 发布 ✅ → M8.5~M8.10 迁移/优化/核心功能 ✅（详见 docs/00-overview.md「路线图」节）

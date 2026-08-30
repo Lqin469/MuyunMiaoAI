@@ -27,3 +27,14 @@
 
 - Closes #（Issue 编号）
 - 需求：R（编号）
+
+## 代码审查（对照 docs/code-review-guide.md §2 六维清单）
+
+- [ ] 正确性：边界/错误处理/协程作用域/异步 ID 竞态已核查
+- [ ] 安全隐私：未引入后台搜索、无硬编码密钥、索引只存元数据（R11 红线）
+- [ ] 架构一致性：未绕过 ChatEngine/EmbeddingProvider/StorageProvider/ToolCallingBus 接口
+- [ ] 可维护性：逐行中文注释完整、命名清晰、无重复代码
+- [ ] 性能：无主线程阻塞、无 N+1 查询、Bitmap 已采样
+- [ ] 测试验证：devlog 记录构建 + 真机验证结果
+
+> 审查结论（由审查者填写）：✅ 通过 / 🔁 修改后通过 / ❌ 打回

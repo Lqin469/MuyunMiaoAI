@@ -3,14 +3,14 @@
 ## 分层
 
 ```
-Presentation（Compose · 单 Activity · 抽屉双模式）
-  常规备忘录 │ AI 对话(流式MD) │ 知识库 │ 模型管理 │ 文件检索 │ 设置
-Application 用例层（UseCase / ViewModel）
+Presentation（Compose · 单 Activity · 顶栏胶囊 + 抽屉 + NavHost 路由）
+  常规备忘 │ AI 对话(流式) │ 知识库 │ 记忆 │ 待办 │ 设置(自检/权限/迁移/模型/主题/API) │ 回收站
+Application 用例层（ViewModel）
 Domain 接口层（纯 Kotlin：ChatEngine / EmbeddingProvider / StorageProvider /
               OcrEngine / PrivilegeManager / ToolCallingBus / SearchConsentGate）
-Data 层（Room·FTS5 / DataStore / SAF·绝对路径 / WorkManager / OkHttp(SSE·下载) /
-         ArchiveExtractor / MemoryExtractor / FileIndexer / ModelImporter）
-基础设施（MNN-LLM·JNI / MNN-PaddleOCR / Shizuku / libsu / 压缩库）
+Data 层（Room·FTS5 / DataStore / SAF / OkHttp(SSE) / ArchiveExtractor /
+         MemoryExtractor / FileIndexer / ModelImporter / LanProtocol）
+基础设施（MNN-LLM·JNI / Shizuku / libsu / 压缩库）
 ```
 
 ## 架构不变式（不可破坏）
@@ -30,21 +30,26 @@ Data 层（Room·FTS5 / DataStore / SAF·绝对路径 / WorkManager / OkHttp(SSE
 
 | 模块 | 职责 | 依赖 |
 |---|---|---|
-| core:storage | 存储根目录抽象、目录规划、迁移 | — |
-| core:db | Room 全库 + FTS5 + consent_audit | storage |
-| core:ai:engine | ChatEngine 双实现（MNN 本地 / OpenAI 兼容云端）、SSE | db |
+| core:storage | 存储根目录抽象、目录规划、迁移、偏好（AppPrefs/WallpaperPrefs/NotePrefs） | — |
+| core:db | Room 全库（9 表，version 4）+ DataStore 偏好 | storage |
+| core:ai:engine | ChatEngine 双实现（MNN 本地 / OpenAI 兼容云端）、引擎路由/设置、运行监控、诊断 | db |
 | core:ai:embed | 双轨 Embedding、向量存取、混合检索 | db |
-| core:ai:tools | 工具调用总线与内置工具（search_file/开路径/读文件/查记忆） | db, search |
-| core:ai:memory | 会话关键信息提炼与记忆库 | db, engine |
-| core:ingest | 文档/图片/压缩包解析、分块、增量入库 | db, embed, storage |
-| core:search | 文件索引、许可闸门、进度契约、检索服务 | db, storage |
-| core:models | 模型目录、下载/校验/删除、本地导入、硬件评估 | storage |
-| feature:notes / chat / knowledge / settings | 各业务页 | 对应 core |
+| core:ai:tools | 工具调用总线与内置工具（search_file / tell_location） | db, search |
+| core:ai:memory | 会话关键信息提炼（MemoryExtractor）与记忆库 | db, engine |
+| core:ingest | 文档/图片/压缩包解析、分块、入库（KnowledgeRepository/RagService/NoteBridge） | db, embed, storage |
+| core:search | 文件索引、许可闸门、进度契约、提权（PrivilegeManager）、检索服务 | db, storage |
+| core:models | 模型导入/删除/硬件评估/列表、运行监控 | storage |
+| core:device | 设备信息检测 + 满足度判定（M-027 新增） | — |
+| core:lan | 局域网发现 + TCP 传输（NSD + 断点续传，M-027 新增） | — |
+| core:ui | 共享 UI：主题（亮暗 + 17 套）、42 图标、通用组件、壁纸渲染（M8.5 新增） | — |
+| feature:notes / chat / settings | 业务页（知识库 UI 在 settings 内实现；feature:knowledge 为空壳占位） | 对应 core |
 
-## M0 已落地的接口（详见 03-contracts.md）
+## 已落地的核心接口（详见 03-contracts.md）
 
-- `SearchConsentGate` / `SearchSession` / `SearchTrigger` / `SearchSettings`（core:search）
-- `FileIndexer` / `SearchScope` / `IndexResult` / `UnauthorizedSearchException`（core:search）
-- `SearchProgress` / `SearchPhase` / `SearchProgressListener`（core:search）
-- `SearchService` / `FileQuery` / `FileHit`（core:search）
-- `ConsentAuditEntry`（core:search，落库在 M1）
+- 搜索/提权：`SearchConsentGate` / `SearchSession` / `SearchSettings` / `FileIndexer` / `SearchScope` / `SearchProgress` / `SearchService` / `PrivilegeManager`（core:search）
+- 引擎：`ChatEngine` / `EngineSettings` / `EngineRouter` / `CloudConfigProvider` / `CloudApiClient` / `LocalChatEngine` / `EngineRuntimeMonitor` / `ModelLoadDiagnostics`（core:ai:engine）
+- 设备：`DeviceInfoProvider` / `CapabilityChecker` / `CheckResult`（core:device）
+- 局域网：`LanProtocol` / `TransferRepository` / `LanDevice` / `SendSession`（core:lan）
+- 工具：`ToolCallingBus` / `AiTool` / `search_file` / `tell_location`（core:ai:tools）
+- 模型：`ModelImporter` / `ModelRepository` / `LocalModelInfo`（core:models）
+- 存储：`StorageProvider` / `StorageMigrator`（core:storage）
