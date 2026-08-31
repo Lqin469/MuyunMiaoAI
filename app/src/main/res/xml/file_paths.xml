@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider 可访问路径声明（文件跳转：点击 AI 回复中的文件路径打开文件） -->
+<paths>
+    <!-- 用户存储根（/storage/emulated/0），文件检索返回的路径多在此 -->
+    <external-path name="external" path="." />
+    <!-- 应用外部文件目录（getExternalFilesDir） -->
+    <external-files-path name="external_files" path="." />
+    <!-- 应用私有文件目录（filesDir） -->
+    <files-path name="files" path="." />
+    <!-- 应用缓存目录（cacheDir） -->
+    <cache-path name="cache" path="." />
+</paths>

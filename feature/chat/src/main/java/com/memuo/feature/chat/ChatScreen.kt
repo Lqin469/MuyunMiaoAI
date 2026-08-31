@@ -1,6 +1,7 @@
 package com.memuo.feature.chat                           // 声明包名：对话业务模块
 
 import android.Manifest                                  // 导入 Manifest：权限常量
+import android.content.Context                           // 导入 Context：文件跳转上下文
 import android.content.Intent                            // 导入 Intent：语音识别意图
 import android.content.pm.PackageManager                 // 导入 PackageManager：权限检查
 import android.graphics.Bitmap                            // 导入 Bitmap：相机预览位图
@@ -57,6 +58,7 @@ import androidx.compose.runtime.mutableStateOf            // 导入 mutableState
 import androidx.compose.runtime.remember                  // 导入 remember：记住状态
 import androidx.compose.runtime.setValue                  // 导入 setValue：by 委托写
 import androidx.core.content.ContextCompat                 // 导入 ContextCompat：权限检查
+import androidx.core.content.FileProvider                  // 导入 FileProvider：文件跳转生成 content URI
 import androidx.compose.ui.Alignment                      // 导入 Alignment：对齐
 import androidx.compose.ui.Modifier                       // 导入 Modifier：修饰
 import androidx.compose.ui.draw.clip                      // 导入 clip：裁剪
@@ -66,8 +68,15 @@ import androidx.compose.ui.draw.shadow                    // 导入 shadow：投
 import androidx.compose.ui.graphics.Color                 // 导入 Color：颜色
 import androidx.compose.ui.layout.ContentScale            // 导入 ContentScale：缩放模式
 import androidx.compose.ui.platform.LocalContext          // 导入 LocalContext：上下文
+import androidx.compose.ui.text.AnnotatedString           // 导入 AnnotatedString：富文本
+import androidx.compose.ui.text.LinkAnnotation            // 导入 LinkAnnotation：可点击链接（文件路径）
+import androidx.compose.ui.text.SpanStyle                 // 导入 SpanStyle：文本片段样式
+import androidx.compose.ui.text.buildAnnotatedString      // 导入 buildAnnotatedString：构建富文本
 import androidx.compose.ui.text.font.FontWeight           // 导入 FontWeight：字重
+import androidx.compose.ui.text.style.TextDecoration      // 导入 TextDecoration：下划线
 import androidx.compose.ui.text.style.TextOverflow        // 导入 TextOverflow：溢出省略
+import androidx.compose.ui.text.withLink                  // 导入 withLink：添加链接
+import androidx.compose.ui.text.withStyle                 // 导入 withStyle：添加样式
 import androidx.compose.ui.unit.dp                        // 导入 dp：尺寸单位
 import androidx.compose.ui.unit.sp                        // 导入 sp：字号单位
 import androidx.hilt.navigation.compose.hiltViewModel     // 导入 hiltViewModel：Hilt 提供 ViewModel
@@ -498,6 +507,8 @@ private fun MessageRow(                                   // 消息行
     onRegenerate: () -> Unit,                             // 重新生成回调
 ) {
     val isUser = msg.role == "user"                       // 是否用户消息
+    val context = LocalContext.current                    // 上下文（文件跳转打开文件）
+    val toast = LocalToast.current                        // Toast（文件跳转提示）
     val showCursor = streaming && !isUser && isLast && msg.content.isNotBlank()  // 流式光标（最后一条助手消息）
     Column(                                               // 纵向（气泡 + 元信息）
         modifier = Modifier                              // 修饰
@@ -597,8 +608,12 @@ private fun MessageRow(                                   // 消息行
                 .padding(horizontal = 14.dp, vertical = 11.dp),  // 内边距（HTML padding 11px 14px）
         ) {
             SelectionContainer {                          // 长按选中复制（报错文字可复制）
-                Text(                                     // 气泡文字
-                    text = msg.content.ifBlank { "…" },   // 空内容占位
+                Text(                                     // 气泡文字（文件路径渲染为可点击链接）
+                    text = buildPathAnnotated(            // 识别路径 → 可点击
+                        content = msg.content.ifBlank { "…" },  // 空内容占位
+                        linkColor = if (isUser) Color.White else MuyunBrand,  // 链接色（用户白/助手品牌色）
+                        onOpenPath = { path -> openPath(context, path) { toast.show(it) } },  // 点击路径打开文件
+                    ),
                     fontSize = 14.sp,                     // 14px（HTML .chat-bubble）
                     lineHeight = 22.sp,                   // 行距（HTML 1.6 × 14 ≈ 22）
                     color = if (isUser) Color.White else MuyunText,  // 用户白/助手主色
@@ -843,3 +858,49 @@ private fun fmtBytes(b: Long): String {                   // 大小格式化
 /** 相机预览位图转 JPEG 字节。 */
 private fun bitmapToBytes(bmp: Bitmap): ByteArray =      // 位图转字节
     java.io.ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()  // 压缩输出
+
+/** 文件路径识别正则：以 / 开头，直到空白或中英文标点（避免误匹配 URL 的 http://）。 */
+private val PATH_REGEX = Regex("/[^\\s,，。；;:：、]+")  // 路径
+
+/** 构建带可点击文件路径的消息富文本（路径段高亮 + 下划线，点击回调 onOpenPath）。 */
+private fun buildPathAnnotated(                          // 构建富文本
+    content: String,                                     // 原始消息
+    linkColor: Color,                                    // 链接色
+    onOpenPath: (String) -> Unit,                        // 点击路径回调
+): AnnotatedString = buildAnnotatedString {              // 构建
+    var last = 0                                         // 上次匹配结束位置
+    for (m in PATH_REGEX.findAll(content)) {             // 遍历所有路径
+        append(content.substring(last, m.range.first))   // 追加普通文本
+        val path = m.value                               // 路径字符串
+        withLink(LinkAnnotation.Clickable(tag = "path") { onOpenPath(path) }) {  // 可点击链接
+            withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {  // 高亮 + 下划线
+                append(path)                             // 追加路径
+            }
+        }
+        last = m.range.last + 1                          // 更新位置
+    }
+    append(content.substring(last))                      // 追加剩余文本
+}
+
+/** 用系统应用打开文件路径（经 FileProvider 生成 content URI）。 */
+private fun openPath(                                    // 打开文件
+    context: Context,                                    // 上下文
+    path: String,                                        // 文件路径
+    toast: (String) -> Unit,                             // 提示回调
+) {
+    val file = File(path)                                // 文件对象
+    if (!file.exists()) {                                // 文件不存在
+        toast("文件不存在：$path")                        // 提示
+        return
+    }
+    val uri = runCatching {                              // 生成 content URI（FileProvider）
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)  // FileProvider URI
+    }.getOrElse { Uri.fromFile(file) }                   // 失败回退 file URI
+    val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull() ?: "*/*"  // MIME 类型
+    val intent = Intent(Intent.ACTION_VIEW).apply {      // 打开意图
+        setDataAndType(uri, mime)                        // URI + 类型
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)  // 授予读取权限
+    }
+    val ok = runCatching { context.startActivity(intent) }.isSuccess  // 启动
+    if (!ok) toast("无法打开该文件（未安装对应应用）")     // 失败提示
+}
