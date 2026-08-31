@@ -498,24 +498,4 @@ class ModelManageViewModel @Inject constructor(          // 构造函数注入
 
     /** 关闭诊断结果弹窗。 */
     fun closeDiagnostic() { _diagnosticResult.value = null }  // 关闭
-
-    /** 模拟导入（无真实选择器时用）：随机模型入列（对应 HTML importModel）。 */
-    fun importMock() {                                   // 模拟导入
-        if (_importing.value) return                     // 导入中忽略
-        _importing.value = true                          // 导入中
-        viewModelScope.launch {                          // 协程中模拟
-            delay(1200)                                  // 1.2 秒（HTML setTimeout）
-            val pool = listOf(                           // 模型池（HTML modelPool）
-                ModelEntry(0, "Qwen3.5-0.8B-MNN", "MNN", 0.5, "arm64-v8a", true, System.currentTimeMillis()),  // 0.8B
-                ModelEntry(0, "Qwen2.5-1.5B-Instruct", "MNN", 0.9, "arm64-v8a", true, System.currentTimeMillis()),  // 1.5B
-                ModelEntry(0, "Qwen2.5-7B-Instruct", "GGUF", 4.7, "arm64-v8a", true, System.currentTimeMillis()),  // 7B
-                ModelEntry(0, "Llama-3.2-1B-Q4", "GGUF", 0.7, "arm64-v8a", false, System.currentTimeMillis()),  // 1B
-            )
-            val tpl = pool.random()                      // 随机取一个（HTML Math.random）
-            val entry = tpl.copy(id = System.currentTimeMillis())  // 新 id
-            _models.value = _models.value + entry        // 入列
-            persist()                                    // 持久化
-            _importing.value = false                     // 结束
-        }
-    }
 }

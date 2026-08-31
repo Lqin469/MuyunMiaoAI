@@ -54,7 +54,6 @@ import com.memuo.core.ui.theme.MuyunText                  // 导入主文字色
 import com.memuo.core.ui.theme.MuyunText2                 // 导入次级文字色
 import com.memuo.core.ui.theme.MuyunText3                 // 导入三级文字色
 import dagger.hilt.android.lifecycle.HiltViewModel        // 导入 HiltViewModel
-import kotlinx.coroutines.delay                            // 导入 delay：延迟
 import kotlinx.coroutines.flow.MutableStateFlow            // 导入可变状态流
 import kotlinx.coroutines.flow.StateFlow                  // 导入只读状态流
 import kotlinx.coroutines.flow.asStateFlow                // 导入 asStateFlow
@@ -520,12 +519,11 @@ class MemoryViewModel @Inject constructor(               // 构造函数注入
         viewModelScope.launch { memoryDao.delete(id) }   // 物理删除
     }
 
-    /** 生成画像（1.2 秒模拟，内容基于真实记忆）。 */
+    /** 刷新画像（基于本地记忆即时统计，无假延迟）。 */
     fun refreshPortrait() {                               // 刷新画像
         if (_portraitLoading.value) return                // 生成中忽略
         _portraitLoading.value = true                     // 生成中
-        viewModelScope.launch {                           // 协程中模拟
-            delay(1200)                                   // 1.2 秒
+        viewModelScope.launch {                           // 协程中即时生成
             val count = _memories.value.size              // 记忆数
             val facts = _memories.value.count { it.type == MemoryType.FACT }  // 事实数
             val prefs = _memories.value.count { it.type == MemoryType.PREFERENCE }  // 偏好数
