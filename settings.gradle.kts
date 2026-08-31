@@ -47,5 +47,4 @@ include(":core:lan")                                  // 局域网传输：NSD �
 // :feature —— 业务层（具体界面与用例）
 include(":feature:notes")                             // 常规备忘录模块
 include(":feature:chat")                              // AI 对话模块
-include(":feature:knowledge")                         // 知识库管理模块
-include(":feature:settings")                          // 设置模块（引擎/存储/隐私开关）
+include(":feature:settings")                          // 设置模块（引擎/存储/隐私开关；知识库 UI 也在本模块内实现）

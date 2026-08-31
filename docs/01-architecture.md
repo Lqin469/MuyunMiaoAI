@@ -42,7 +42,7 @@ Data 层（Room·FTS5 / DataStore / SAF / OkHttp(SSE) / ArchiveExtractor /
 | core:device | 设备信息检测 + 满足度判定（M-027 新增） | — |
 | core:lan | 局域网发现 + TCP 传输（NSD + 断点续传，M-027 新增） | — |
 | core:ui | 共享 UI：主题（亮暗 + 17 套）、42 图标、通用组件、壁纸渲染（M8.5 新增） | — |
-| feature:notes / chat / settings | 业务页（知识库 UI 在 settings 内实现；feature:knowledge 为空壳占位） | 对应 core |
+| feature:notes / chat / settings | 业务页（知识库 UI 在 settings 内实现；原 feature:knowledge 空壳已删除） | 对应 core |
 
 ## 已落地的核心接口（详见 03-contracts.md）
 
