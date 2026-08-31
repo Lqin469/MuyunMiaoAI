@@ -11,11 +11,13 @@ import javax.inject.Singleton                              // 导入 Singleton
  * 工具定义（ToolDef）—— 一个可被 AI 调用的工具。
  * @param name 工具名（LLM 声明用）
  * @param description 工具说明（写进系统提示，告诉 LLM 何时调用）
+ * @param parameters 参数的 JSON Schema（function calling 的 tools 声明用）
  * @param executor 执行器：入参 JSON 字符串 → 出参 JSON 字符串
  */
 data class ToolDef(                                       // 工具定义数据类
     val name: String,                                     // 工具名
     val description: String,                              // 工具说明
+    val parameters: JSONObject,                           // 参数 JSON Schema（function calling）
     val executor: suspend (String) -> String,             // 执行器（挂起函数）
 )
 
@@ -51,6 +53,20 @@ class ToolCallingBus @Inject constructor(                // 构造函数注入
         }
     }
 
+    /** 生成 OpenAI 兼容的 tools 声明（function calling 协议）。 */
+    fun describeAsTools(): JSONArray = JSONArray().apply {  // 构建 tools JSON 数组
+        registry.values.forEach { tool ->                 // 遍历工具
+            put(JSONObject().apply {                      // 每个工具一项
+                put("type", "function")                   // 类型：function
+                put("function", JSONObject().apply {      // 函数定义
+                    put("name", tool.name)                // 名称
+                    put("description", tool.description)  // 说明
+                    put("parameters", tool.parameters)    // 参数 JSON Schema
+                })
+            })
+        }
+    }
+
     /** 分发工具调用：按名称查注册表并执行；未知工具返回错误 JSON。 */
     suspend fun dispatch(name: String, argsJson: String): String =  // 分发执行
         registry[name]?.executor?.invoke(argsJson)        // 执行器
@@ -71,7 +87,15 @@ class ToolCallingBus @Inject constructor(                // 构造函数注入
         register(                                         // 写入注册表
             ToolDef(
                 name = "search_file",                     // 工具名
-                description = "搜索设备上的文件（按文件名关键词模糊匹配），返回文件真实路径。参数：{\"keyword\":\"关键词\",\"extension\":\"可选扩展名\"}",  // 说明
+                description = "搜索设备上的文件（按文件名关键词模糊匹配），返回文件真实路径。",  // 说明
+                parameters = JSONObject().apply {         // 参数 Schema
+                    put("type", "object")                 // 对象类型
+                    put("properties", JSONObject().apply {  // 属性
+                        put("keyword", JSONObject().put("type", "string").put("description", "文件名关键词"))  // 关键词
+                        put("extension", JSONObject().put("type", "string").put("description", "可选扩展名"))  // 扩展名
+                    })
+                    put("required", JSONArray().put("keyword"))  // 必填：关键词
+                },
                 executor = { argsJson ->                  // 执行器
                     val obj = runCatching { JSONObject(argsJson) }.getOrNull()  // 解析参数
                     val keyword = obj?.optString("keyword")?.trim().orEmpty()  // 关键词
@@ -106,7 +130,14 @@ class ToolCallingBus @Inject constructor(                // 构造函数注入
         register(                                         // 写入注册表
             ToolDef(
                 name = "tell_location",                   // 工具名
-                description = "返回指定文件的位置说明（用户问'文件在哪'时用）。参数：{\"path\":\"文件路径\"}",  // 说明
+                description = "返回指定文件的位置说明（用户问'文件在哪'时用）。",  // 说明
+                parameters = JSONObject().apply {         // 参数 Schema
+                    put("type", "object")                 // 对象类型
+                    put("properties", JSONObject().apply {  // 属性
+                        put("path", JSONObject().put("type", "string").put("description", "文件路径"))  // 路径
+                    })
+                    put("required", JSONArray().put("path"))  // 必填：路径
+                },
                 executor = { argsJson ->                  // 执行器
                     val path = runCatching { JSONObject(argsJson).optString("path") }.getOrDefault("")  // 解析路径
                     if (path.isBlank()) {                 // 无路径

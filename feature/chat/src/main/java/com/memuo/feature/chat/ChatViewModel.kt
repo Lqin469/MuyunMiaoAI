@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel                       // 导入 ViewModel：
 import androidx.lifecycle.viewModelScope                  // 导入 viewModelScope：ViewModel 协程作用域
 import com.memuo.core.ai.engine.ChatEngine                 // 导入对话引擎接口
 import com.memuo.core.ai.engine.ChatEvent                  // 导入对话事件
+import com.memuo.core.ai.engine.CloudChatEngine             // 导入云端引擎（function calling 用）
 import com.memuo.core.ai.engine.EngineRouter               // 导入引擎路由器（本地/云端切换，原型迁移新增）
 import com.memuo.core.ai.engine.EngineSettings             // 导入引擎设置（切换后状态流）
 import com.memuo.core.ai.memory.MemoryStore                // 导入记忆仓库（M5 每 N 轮提炼）
@@ -30,6 +31,7 @@ import javax.inject.Inject                                 // 导入 Inject：�
 class ChatViewModel @Inject constructor(                 // 构造函数注入
     private val chatDao: ChatDao,                        // 注入会话 DAO
     private val engine: ChatEngine,                      // 注入对话引擎（当前为云端实现）
+    private val cloudEngine: CloudChatEngine,            // 注入云端引擎（function calling 工具循环）
     private val memoryStore: MemoryStore,                // 注入记忆仓库（M5 提炼）
     private val toolBus: ToolCallingBus,                 // 注入工具总线（M7 文件检索工具）
     private val engineSettings: EngineSettings,          // 注入引擎设置（云端/本地状态流）
@@ -173,7 +175,11 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
     private suspend fun runStream(history: List<ChatMessage>, promptText: String) {  // 流式对话
         _streaming.value = true                          // 进入流式状态
         _streamText.value = ""                           // 清空流式文本
-        val sb = StringBuilder()                         // 累积 AI 回复
+        if (engineSettings.engineType.first() == EngineType.CLOUD) {  // 云端引擎
+            runCloudWithTools(history)                   // function calling 工具循环
+            return                                      // 结束
+        }
+        val sb = StringBuilder()                         // 累积 AI 回复（本地流式）
         engine.streamChat(history, system = toolBus.describeForLlm()).collect { event ->  // 流式收集（注入工具声明）
             when (event) {                              // 分发事件
                 is ChatEvent.Delta -> {                  // 增量文本
@@ -218,6 +224,48 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
                 )
             )
         }
+    }
+
+    /** 云端 function calling 工具循环：chatWithTools → 工具调用 → 执行 → 回传，直到最终文本。 */
+    private suspend fun runCloudWithTools(history: List<ChatMessage>) {  // function calling 循环
+        val messages = history.toMutableList()            // 消息列表（追加 tool 结果）
+        val tools = toolBus.describeAsTools()             // OpenAI tools 声明
+        var finalText = ""                                // 最终回复
+        var rounds = 0                                    // 工具轮数
+        try {
+            while (rounds < 4) {                          // 最多 4 轮工具调用
+                val result = cloudEngine.chatWithTools(messages, system = null, tools = tools)  // 一次 chat
+                if (result == null) {                     // 未配置云端 API
+                    finalText = "未配置云端 API，请到设置页填写 baseUrl/APIKey/模型"
+                    break
+                }
+                if (result.toolCalls.isEmpty()) {         // 无工具调用 → 最终文本
+                    finalText = result.text.orEmpty()
+                    break
+                }
+                val executed = result.toolCalls.mapNotNull { tc ->  // 执行每个工具
+                    val r = toolBus.dispatch(tc.name, tc.arguments)  // 分发执行
+                    if (r.contains("\"error\"")) null else "工具「${tc.name}」结果：$r"  // 失败丢弃、成功格式化
+                }
+                if (executed.isEmpty()) {                 // 工具全部失败
+                    finalText = result.text.orEmpty()     // 用已有文本
+                    break
+                }
+                messages.add(                             // 工具结果回传（role=tool）
+                    ChatMessage(convId = convId, role = "tool", content = executed.joinToString("\n"), ts = System.currentTimeMillis())
+                )
+                rounds++                                  // 轮数 +1
+            }
+        } catch (e: Exception) {                          // 网络/解析异常
+            finalText = "对话出错：${e.message ?: "未知错误"}"
+        }
+        if (finalText.isNotBlank()) {                     // 有最终文本则落库
+            chatDao.insertMessage(                        // 写 AI 回复
+                ChatMessage(convId = convId, role = "assistant", content = finalText, ts = System.currentTimeMillis())
+            )
+        }
+        _streaming.value = false                          // 退出流式状态
+        _streamText.value = ""                            // 清空
     }
 
     /** 每 4 轮对话触发一次记忆提炼（M5）：把最近 8 条消息交给 MemoryStore 提炼并落库。 */

@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers                       // 导入 Dispatcher
 import kotlinx.coroutines.SupervisorJob                     // 导入 SupervisorJob：重试任务互不影响
 import kotlinx.coroutines.delay                             // 导入 delay：指数退避等待
 import kotlinx.coroutines.launch                            // 导入 launch：启动重试协程
+import kotlinx.coroutines.withContext                        // 导入 withContext：切换 IO 调度器
 import okhttp3.Call                                       // 导入 Call：一次 HTTP 请求
 import okhttp3.Callback                                   // 导入 Callback：异步回调
 import okhttp3.MediaType.Companion.toMediaType            // 导入 toMediaType：构造媒体类型
@@ -30,6 +31,20 @@ import kotlin.random.Random                                // 导入 Random：�
  *  - 流保护：SSE 已开始产出内容后连接中断不重发（防内容重复），直接报"流中断"；
  *  - 错误文案归一化：超时/认证失败/限流/服务端错误/网络不可用。
  */
+
+/** 一次工具调用（function calling 协议中的 tool_calls 项）。 */
+data class ToolCall(                                      // 工具调用数据类
+    val id: String,                                       // 调用 id（回传关联用）
+    val name: String,                                     // 工具名
+    val arguments: String,                                // 参数 JSON 字符串
+)
+
+/** 带工具的一次 chat 响应结果：最终文本 或 工具调用列表。 */
+data class ChatWithToolsResult(                           // 响应结果
+    val text: String?,                                    // 最终回复文本（finish=stop 时非空）
+    val toolCalls: List<ToolCall>,                        // 工具调用列表（finish=tool_calls 时非空）
+)
+
 class CloudApiClient @Inject constructor(                 // 构造函数注入
     private val okHttp: OkHttpClient,                     // 注入 OkHttp 客户端（含超时配置）
 ) {
@@ -84,6 +99,84 @@ class CloudApiClient @Inject constructor(                 // 构造函数注入
                 onResult("ERR:${classifyIoError(e)}")    // 分类错误回调
             }
         })
+    }
+
+    /**
+     * 带工具的一次 chat 请求（function calling，非流式）。
+     * @param config 云端配置
+     * @param messages 消息列表（可含 role=tool 的工具结果消息）
+     * @param system 系统提示词（可空）
+     * @param tools OpenAI 兼容 tools 声明（JSONArray）
+     * @return 最终文本 或 工具调用列表
+     */
+    suspend fun chatWithTools(                            // 带工具的非流式 chat
+        config: CloudConfig,                              // 配置
+        messages: List<ChatMessage>,                      // 消息列表
+        system: String?,                                  // 系统提示词
+        tools: JSONArray,                                 // tools 声明
+    ): ChatWithToolsResult = withContext(Dispatchers.IO) {  // IO 线程执行
+        val request = buildToolsRequest(config, messages, system, tools)  // 构造请求
+        okHttp.newCall(request).execute().use { response ->  // 同步执行（工具循环串行）
+            if (!response.isSuccessful) {                // HTTP 非 2xx
+                throw IOException(classifyHttpError(response.code))  // 抛分类错误
+            }
+            parseChatResult(response.body?.string().orEmpty())  // 解析响应
+        }
+    }
+
+    /** 构造带 tools 的非流式请求体。 */
+    private fun buildToolsRequest(                        // 构造请求
+        config: CloudConfig,                              // 配置
+        messages: List<ChatMessage>,                      // 消息
+        system: String?,                                  // 系统提示词
+        tools: JSONArray,                                 // tools
+    ): Request {                                         // 返回请求
+        val arr = JSONArray()                             // 消息数组
+        system?.let { arr.put(JSONObject().put("role", "system").put("content", it)) }  // system 消息
+        messages.forEach { m ->                           // 遍历消息（含 role=tool）
+            arr.put(JSONObject().put("role", m.role).put("content", m.content))  // 消息
+        }
+        val body = JSONObject()                           // 请求体
+            .put("model", config.model)                   // 模型
+            .put("messages", arr)                         // 消息
+            .put("tools", tools)                          // 工具声明
+            .put("tool_choice", "auto")                   // 自动选择工具
+        return Request.Builder()                          // 构造请求
+            .url(config.baseUrl.trimEnd('/') + "/chat/completions")  // 端点
+            .header("Authorization", "Bearer ${config.apiKey}")      // 认证
+            .header("Content-Type", "application/json")   // 内容类型
+            .post(body.toString().toRequestBody("application/json".toMediaType()))  // 请求体
+            .build()                                      // 构建
+    }
+
+    /** 解析 chat 响应：返回最终文本或工具调用列表。 */
+    private fun parseChatResult(json: String): ChatWithToolsResult {  // 解析响应
+        return runCatching {                              // 容错
+            val root = JSONObject(json)                   // 解析 JSON
+            val message = root.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")  // message
+            val toolCalls = message?.optJSONArray("tool_calls")  // tool_calls 数组
+            if (toolCalls != null && toolCalls.length() > 0) {  // 有工具调用
+                ChatWithToolsResult(                      // 返回工具调用
+                    text = message.optString("content").takeIf { it.isNotBlank() },  // 可能同时有文本
+                    toolCalls = (0 until toolCalls.length()).map { i ->  // 解析每个 tool_call
+                        val tc = toolCalls.getJSONObject(i)  // tool_call 对象
+                        val fn = tc.optJSONObject("function")  // function 对象
+                        ToolCall(                         // 构造
+                            id = tc.optString("id"),      // id
+                            name = fn?.optString("name").orEmpty(),  // 工具名
+                            arguments = fn?.optString("arguments").orEmpty(),  // 参数 JSON
+                        )
+                    },
+                )
+            } else {                                     // 无工具调用（正常回复）
+                ChatWithToolsResult(                      // 返回文本
+                    text = message?.optString("content"), // 内容
+                    toolCalls = emptyList(),              // 空工具调用
+                )
+            }
+        }.getOrElse {                                    // 解析失败
+            ChatWithToolsResult(text = null, toolCalls = emptyList())  // 空结果
+        }
     }
 
     /** 单次请求尝试（带重试判定）。 */

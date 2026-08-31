@@ -5,6 +5,7 @@ import com.memuo.core.db.entity.EngineType                 // 导入引擎类型
 import kotlinx.coroutines.channels.awaitClose              // 导入 awaitClose：callbackFlow 收尾
 import kotlinx.coroutines.flow.Flow                        // 导入 Flow：数据流
 import kotlinx.coroutines.flow.callbackFlow                // 导入 callbackFlow：回调转 Flow
+import org.json.JSONArray                                 // 导入 JSONArray：tools 声明
 import javax.inject.Inject                                 // 导入 Inject：构造函数注入
 
 /**
@@ -43,4 +44,17 @@ class CloudChatEngine @Inject constructor(                // 构造函数注入
             )
             awaitClose { }                                // 流被取消时的收尾（此处无需清理）
         }
+
+    /**
+     * 带工具的一次非流式 chat（function calling）。
+     * @return 最终文本或工具调用；未配置云端 API 返回 null。
+     */
+    suspend fun chatWithTools(                            // 带工具的非流式 chat
+        messages: List<ChatMessage>,                      // 消息列表（可含 role=tool）
+        system: String?,                                  // 系统提示词
+        tools: JSONArray,                                 // tools 声明
+    ): ChatWithToolsResult? {                             // 结果（未配置返回 null）
+        val config = configProvider.current() ?: return null  // 读配置，未配置返回 null
+        return api.chatWithTools(config, messages, system, tools)  // 调用客户端
+    }
 }
