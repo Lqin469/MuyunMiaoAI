@@ -31,7 +31,8 @@
 |---|---|---|
 | `settings` | engine_type / background_indexing_enabled | 引擎类型 / 后台索引开关（默认 false） |
 | `cloud_settings` | cloud_base_url / cloud_model（DataStore）+ cloud_api_key（EncryptedSharedPreferences） | 云端 API 配置 |
-| `muyun_ext` | perm_mode / api_list_json / api_current_id / model_list_json / local_model_id / kb_folders_json / kb_privacy / migrate_logs_json / lan_receive_mode / lan_save_path | 各页面扩展偏好 |
+| `muyun_ext` | perm_mode / api_current_id / model_list_json / local_model_id / kb_folders_json / kb_privacy / migrate_logs_json / lan_receive_mode / lan_save_path | 各页面扩展偏好 |
+| `secure_api_list`（EncryptedSharedPreferences） | api_list_json | 多 API 列表（含密钥，Keystore 加密存储；旧 DataStore 明文已一次性迁移） |
 | `wallpaper` | source(DEFAULT/PRESET/UPLOAD) / presetId / imageUri / mode(TILE/STRETCH/CENTER/BLUR) | 主题与壁纸配置 |
 | `app_prefs` | first_run_done / dark_mode | 首启自检门 / 深色模式 |
 

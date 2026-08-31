@@ -1,15 +1,22 @@
 package com.memuo.feature.settings                         // 声明包名：设置业务模块
 
 import android.content.Context                            // 导入 Context：应用上下文
+import android.content.SharedPreferences                  // 导入 SharedPreferences：键值存储接口
 import androidx.datastore.preferences.core.Preferences     // 导入 Preferences：键值容器
 import androidx.datastore.preferences.core.booleanPreferencesKey  // 导入 booleanPreferencesKey：布尔键
 import androidx.datastore.preferences.core.edit            // 导入 edit：写 DataStore
 import androidx.datastore.preferences.core.longPreferencesKey  // 导入 longPreferencesKey：长整型键
 import androidx.datastore.preferences.core.stringPreferencesKey  // 导入 stringPreferencesKey：字符串键
 import androidx.datastore.preferences.preferencesDataStore  // 导入 preferencesDataStore：创建 DataStore
+import androidx.security.crypto.EncryptedSharedPreferences // 导入 EncryptedSharedPreferences：加密偏好存储
+import androidx.security.crypto.MasterKey                 // 导入 MasterKey：Keystore 主密钥
 import dagger.hilt.android.qualifiers.ApplicationContext  // 导入 ApplicationContext：应用级上下文
 import kotlinx.coroutines.flow.Flow                       // 导入 Flow：响应式数据流
+import kotlinx.coroutines.flow.MutableStateFlow            // 导入 MutableStateFlow：可变状态流
+import kotlinx.coroutines.flow.asStateFlow                 // 导入 asStateFlow：转只读状态流
+import kotlinx.coroutines.flow.first                       // 导入 first：取流首值（旧数据迁移）
 import kotlinx.coroutines.flow.map                         // 导入 map：流变换
+import kotlinx.coroutines.runBlocking                      // 导入 runBlocking：同步读（旧数据迁移）
 import javax.inject.Inject                                // 导入 Inject：构造函数注入
 import javax.inject.Singleton                              // 导入 Singleton：单例作用域
 
@@ -47,13 +54,46 @@ class ExtPrefs @Inject constructor(                     // 构造函数注入
         context.extPrefsDataStore.edit { it[Keys.PERM_MODE] = mode }  // 写入
     }
 
-    // —— 云端 API 列表 ——
-    /** API 列表 JSON 流（空串 = 无）。 */
-    val apiListJson: Flow<String> = context.extPrefsDataStore.data.map { it[Keys.API_LIST] ?: "" }  // 读流
+    // —— 云端 API 列表（密钥加密存储）——
+    /** 加密偏好存储（API 列表专用）：Keystore AES256_GCM 加密，与 CloudConfigRepository 同模式。 */
+    private val securePrefs: SharedPreferences by lazy { // 懒加载加密存储
+        runCatching {                                    // 容错：Keystore 损坏时不崩溃
+            val masterKey = MasterKey.Builder(context)    // 构建主密钥（Keystore 生成，永不离开设备）
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)  // AES256_GCM 方案
+                .build()                                  // 构建
+            EncryptedSharedPreferences.create(            // 创建加密偏好存储
+                context,                                  // 上下文
+                "secure_api_list",                        // 文件名
+                masterKey,                                // 主密钥
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,   // 键名加密
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM, // 值加密
+            )
+        }.getOrElse {                                    // 回退：加密存储初始化失败时用普通偏好（仅兜底）
+            context.getSharedPreferences("secure_api_list", Context.MODE_PRIVATE)
+        }
+    }
 
-    /** 保存 API 列表 JSON。 */
+    /** API 列表 JSON 流（空串 = 无）；密钥加密存储（响应式用 StateFlow 包装）。 */
+    private val _apiListJson = MutableStateFlow(loadApiList())  // 初始加载（含旧数据迁移）
+    val apiListJson: Flow<String> = _apiListJson.asStateFlow()  // 只读暴露
+
+    /** 初始加载 API 列表：优先加密存储，空则迁移旧 DataStore 明文数据（一次性）。 */
+    private fun loadApiList(): String {                  // 加载 + 迁移
+        val secure = securePrefs.getString(API_LIST_KEY, "") ?: ""  // 读加密存储
+        if (secure.isNotBlank()) return secure            // 已有加密数据，直接返回
+        val legacy = runBlocking { context.extPrefsDataStore.data.first()[Keys.API_LIST] }  // 读旧 DataStore 明文
+        return if (legacy.isNullOrBlank()) ""             // 无旧数据，返回空
+        else {                                           // 有旧数据，迁移
+            securePrefs.edit().putString(API_LIST_KEY, legacy).apply()  // 迁到加密存储
+            runBlocking { context.extPrefsDataStore.edit { it.remove(Keys.API_LIST) } }  // 清除旧明文
+            legacy                                       // 返回旧值
+        }
+    }
+
+    /** 保存 API 列表 JSON（写入加密存储 + 更新状态流）。 */
     suspend fun setApiListJson(json: String) {            // 写 API 列表
-        context.extPrefsDataStore.edit { it[Keys.API_LIST] = json }  // 写入
+        securePrefs.edit().putString(API_LIST_KEY, json).apply()  // 写入加密存储
+        _apiListJson.value = json                         // 更新状态流
     }
 
     /** 当前使用 API id 流。 */
@@ -123,5 +163,10 @@ class ExtPrefs @Inject constructor(                     // 构造函数注入
     /** 保存保存路径。 */
     suspend fun setLanSavePath(path: String) {            // 写保存路径
         context.extPrefsDataStore.edit { it[Keys.LAN_PATH] = path }  // 写入
+    }
+
+    companion object {                                    // 伴生对象：静态常量
+        /** 加密存储里的 API 列表键。 */
+        private const val API_LIST_KEY = "api_list_json"  // 键名（与旧 DataStore 键同名，便于理解）
     }
 }
