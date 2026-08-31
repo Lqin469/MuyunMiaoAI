@@ -36,7 +36,7 @@ import com.memuo.core.db.entity.TodoItem                  // 导入待办实体
         ConsentAuditEntity::class,                        // 搜索审计表
     ],
     version = 4,                                          // 数据库版本号（M5 新增 kb_memory 表，升到 4）
-    exportSchema = false,                                 // 不导出 schema（简化；正式发布建议开启）
+    exportSchema = true,                                  // 导出 schema 历史（配合显式 Migration 做编译期校验）
 )
 abstract class AppDatabase : RoomDatabase() {             // 抽象数据库类（Room 生成实现）
 

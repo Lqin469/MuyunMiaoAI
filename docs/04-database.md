@@ -44,5 +44,6 @@
 
 ## 迁移策略（重要）
 
-- 当前 `Room.databaseBuilder(...).fallbackToDestructiveMigration()`（开发期兜底，**升级即清库**）；
-- **正式发布前必须改为显式 Migration**（v4→v5 等逐步迁移），并开启 `exportSchema=true` 提交 schema 文件（参考 code-review-guide §7 建议）。
+- 已改为**显式 Migration**：`core/db/Migrations.kt` 定义 `MIGRATION_1_2`（+kb_documents/kb_chunks）、`MIGRATION_2_3`（+file_locations）、`MIGRATION_3_4`（+kb_memory），`DatabaseModule` 用 `addMigrations(*Migrations.ALL)` 替换原 `fallbackToDestructiveMigration`，版本升级**保留数据不再清库**；
+- 已开启 `exportSchema = true`，schema 历史提交到 `core/db/schemas/com.memuo.core.db.AppDatabase/`（当前 `4.json`），供编译期与运行时迁移校验；
+- **后续变更规则**：改表结构必须 `version +1` 并新增对应 Migration，同时回写本文「表清单」与「迁移策略」两节。

@@ -37,7 +37,7 @@ object DatabaseModule {                                    // 单例对象：提
             context,                                       // 应用上下文
             AppDatabase::class.java,                       // 数据库类
             dbFile.absolutePath,                           // 数据库文件绝对路径（支持自定义目录）
-        ).fallbackToDestructiveMigration()                 // 开发期：版本升级无 Migration 时重建（发布前应改显式 Migration）
+        ).addMigrations(*Migrations.ALL)                   // 显式迁移：版本升级走 Migration 保留数据（不再清库）
             .build()                                       // 构建并返回实例
     }
 

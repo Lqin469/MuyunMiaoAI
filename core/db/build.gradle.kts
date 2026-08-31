@@ -15,6 +15,14 @@ android {                                              // Android 构建配置�
     compileSdk = 36                                    // 编译 SDK 版本
     defaultConfig {                                    // 默认配置
         minSdk = 26                                    // 最低支持 Android 8.0
+        // Room schema 导出目录：exportSchema=true 时生成版本化 schema JSON（供迁移校验与历史追溯）
+        javaCompileOptions {                           // Java 编译选项
+            annotationProcessorOptions {               // 注解处理器选项（kapt 读此配置）
+                arguments += mapOf(                    // 追加参数（不覆盖已有）
+                    "room.schemaLocation" to "$projectDir/schemas",  // schema JSON 输出到模块 schemas/ 目录
+                )
+            }
+        }
     }
     compileOptions {                                   // Java 字节码版本
         sourceCompatibility = JavaVersion.VERSION_17   // 源码兼容 Java 17
