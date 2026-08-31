@@ -1,7 +1,13 @@
 package com.memuo.feature.chat                           // 声明包名：对话业务模块
 
+import android.Manifest                                  // 导入 Manifest：权限常量
+import android.content.Intent                            // 导入 Intent：语音识别意图
+import android.content.pm.PackageManager                 // 导入 PackageManager：权限检查
 import android.graphics.Bitmap                            // 导入 Bitmap：相机预览位图
 import android.net.Uri                                   // 导入 Uri：内容标识
+import android.speech.RecognitionListener                // 导入 RecognitionListener：识别回调
+import android.speech.RecognizerIntent                   // 导入 RecognizerIntent：识别意图构造
+import android.speech.SpeechRecognizer                   // 导入 SpeechRecognizer：系统语音识别
 import androidx.activity.compose.rememberLauncherForActivityResult  // 导入 rememberLauncherForActivityResult：系统启动器
 import androidx.activity.result.contract.ActivityResultContracts  // 导入 ActivityResultContracts：系统契约
 import androidx.compose.animation.AnimatedVisibility      // 导入 AnimatedVisibility：显隐动画
@@ -43,12 +49,14 @@ import androidx.compose.material3.Icon                    // 导入 Icon：图�
 import androidx.compose.material3.MaterialTheme           // 导入 MaterialTheme：主题
 import androidx.compose.material3.Text                    // 导入 Text：文本
 import androidx.compose.runtime.Composable                // 导入 Composable：可组合函数注解
+import androidx.compose.runtime.DisposableEffect            // 导入 DisposableEffect：销毁副作用（释放识别器）
 import androidx.compose.runtime.LaunchedEffect            // 导入 LaunchedEffect：副作用
 import androidx.compose.runtime.collectAsState            // 导入 collectAsState：状态流→状态
 import androidx.compose.runtime.getValue                  // 导入 getValue：by 委托
 import androidx.compose.runtime.mutableStateOf            // 导入 mutableStateOf：可变状态
 import androidx.compose.runtime.remember                  // 导入 remember：记住状态
 import androidx.compose.runtime.setValue                  // 导入 setValue：by 委托写
+import androidx.core.content.ContextCompat                 // 导入 ContextCompat：权限检查
 import androidx.compose.ui.Alignment                      // 导入 Alignment：对齐
 import androidx.compose.ui.Modifier                       // 导入 Modifier：修饰
 import androidx.compose.ui.draw.clip                      // 导入 clip：裁剪
@@ -129,13 +137,60 @@ fun ChatScreen(                                           // 对话页
         }
     }
 
-    // 语音模拟：1.5 秒后把识别文本填入输入框（对应 HTML startVoiceInput 的 setTimeout）
-    LaunchedEffect(recording) {                           // 录音态变化
-        if (recording) {                                  // 开始录音
-            kotlinx.coroutines.delay(1500)                // 1.5 秒
-            recording = false                             // 停止
-            input = "用语音输入的内容"                     // 填入模拟识别结果（HTML 同款文案）
-            toast.show("已识别，请点击发送")               // 提示
+    // 语音识别真实现：麦克风 → 权限检查 → 系统 SpeechRecognizer 识别 → 结果填入输入框
+    val speechRecognizer = remember {                     // 懒创建识别器（设备不支持则 null）
+        if (SpeechRecognizer.isRecognitionAvailable(context)) SpeechRecognizer.createSpeechRecognizer(context) else null  // 系统支持则创建
+    }
+    fun startVoiceListening() {                          // 启动真实语音识别（局部函数，供权限回调/录音态调用）
+        val sr = speechRecognizer ?: return               // 无识别器直接返回
+        sr.setRecognitionListener(object : RecognitionListener {  // 识别回调
+            override fun onResults(results: android.os.Bundle?) {  // 最终识别结果
+                val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()  // 取第一个候选
+                if (text.isNotBlank()) {                 // 有识别内容
+                    input = text                         // 填入输入框
+                    toast.show("已识别，请点击发送")       // 提示
+                } else toast.show("未识别到内容，请重试")  // 空结果提示
+                recording = false                        // 复位录音态
+            }
+            override fun onError(error: Int) {           // 识别出错
+                recording = false                        // 复位
+                toast.show("语音识别失败，请重试")         // 提示
+            }
+            override fun onReadyForSpeech(params: android.os.Bundle?) {}  // 就绪
+            override fun onBeginningOfSpeech() {}        // 开始说话
+            override fun onRmsChanged(rmsdB: Float) {}   // 音量变化
+            override fun onBufferReceived(buffer: ByteArray?) {}  // 音频缓冲
+            override fun onEndOfSpeech() {}              // 结束说话
+            override fun onPartialResults(partialResults: android.os.Bundle?) {}  // 部分结果
+            override fun onEvent(eventType: Int, params: android.os.Bundle?) {}  // 事件
+        })
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {  // 识别意图
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)  // 自由模式
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")  // 中文识别
+        }
+        sr.startListening(intent)                        // 开始监听
+    }
+    val voicePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->  // 权限结果
+        if (granted) startVoiceListening()               // 授权后启动识别
+        else {                                           // 拒绝
+            recording = false                            // 复位录音态
+            toast.show("未授予录音权限，无法语音输入")      // 提示
+        }
+    }
+    DisposableEffect(Unit) {                             // 离开页面时释放识别器
+        onDispose { speechRecognizer?.destroy() }        // 释放系统资源
+    }
+    LaunchedEffect(recording) {                          // 录音态变化
+        if (recording) {                                 // 开始语音输入
+            when {                                       // 分支处理
+                speechRecognizer == null -> {            // 设备不支持
+                    recording = false                    // 复位
+                    toast.show("当前设备不支持语音识别")    // 提示
+                }
+                ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ->  // 无录音权限
+                    voicePermission.launch(Manifest.permission.RECORD_AUDIO)  // 请求权限
+                else -> startVoiceListening()            // 已授权，直接启动识别
+            }
         }
     }
 

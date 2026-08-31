@@ -3,6 +3,8 @@
 
     <!-- 联网权限：云端 AI API 与模型下载需要网络 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 录音权限：语音输入（系统 SpeechRecognizer 识别）需要 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- 知识库/文件读取走 SAF（无需存储权限）；全盘检索需 Shizuku(root/adb) 或
          MANAGE_EXTERNAL_STORAGE，待 M7 阶段按能力等级再声明 -->
 
