@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon                    // 导入 Icon：图�
 import androidx.compose.material3.MaterialTheme           // 导入 MaterialTheme：主题
 import androidx.compose.material3.Text                    // 导入 Text：文本
 import androidx.compose.runtime.Composable                // 导入 Composable：可组合函数注解
+import androidx.compose.runtime.LaunchedEffect            // 导入 LaunchedEffect：副作用（提示→Toast）
 import androidx.compose.runtime.collectAsState            // 导入 collectAsState：状态流→状态
 import androidx.compose.runtime.getValue                  // 导入 getValue：by 委托
 import androidx.compose.ui.Alignment                      // 导入 Alignment：对齐
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp                        // 导入 dp：尺寸�
 import androidx.hilt.navigation.compose.hiltViewModel     // 导入 hiltViewModel：Hilt 提供 ViewModel
 import androidx.lifecycle.ViewModel                       // 导入 ViewModel：UI 数据持有者
 import androidx.lifecycle.viewModelScope                  // 导入 viewModelScope：协程作用域
+import com.memuo.core.search.privilege.PrivilegeManager  // 导入提权管理器：真实权限验证/授权
 import com.memuo.core.ui.AppIcons                          // 导入应用图标集
 import com.memuo.core.ui.components.LocalToast            // 导入 Toast 状态
 import com.memuo.core.ui.components.SectionCard            // 导入分组卡片
@@ -56,7 +58,13 @@ fun PermissionScreen(                                    // 权限管理页
     viewModel: PermissionViewModel = hiltViewModel(),    // Hilt 提供 ViewModel
 ) {
     val mode by viewModel.mode.collectAsState()          // 订阅权限模式
+    val level by viewModel.level.collectAsState()        // 订阅真实能力等级
+    val message by viewModel.message.collectAsState()    // 订阅切换结果提示
     val toast = LocalToast.current                       // 取全局 Toast
+
+    LaunchedEffect(message) {                            // 切换结果 → Toast
+        message?.let { toast.show(it); viewModel.consumeMessage() }  // 弹提示并消费
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {           // 纵向布局
         SubHeader(title = "权限管理", onBack = onBack)     // 顶栏
@@ -74,19 +82,16 @@ fun PermissionScreen(                                    // 权限管理页
                             icon = icon,                  // 图标
                             name = text.first,            // 名称
                             desc = text.second,           // 描述
-                            onClick = {                   // 点击选中
-                                viewModel.setMode(m)      // 保存
-                                toast.show(               // Toast（HTML selectPermMode 同款文案）
-                                    when (m) {            // 按模式
-                                        "basic" -> "已切换为基础权限"   // 基础
-                                        "adb" -> "已启用 ADB 权限"     // ADB
-                                        else -> "已启用 ROOT 权限"     // ROOT
-                                    }
-                                )
-                            },
+                            onClick = { viewModel.setMode(m) },  // 点击切换（真实验证权限，结果经 message 提示）
                         )
                     }
                 }
+                Text(                                     // 当前真实权限等级（实测，非用户选择值）
+                    text = "当前真实权限：${levelLabel(level)}",  // 实测等级
+                    style = MaterialTheme.typography.labelSmall,  // 小字
+                    color = if (level == PrivilegeManager.Level.NONE) MuyunText2 else MuyunGreen,  // 无权限灰/有权限绿
+                    modifier = Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp),  // 内边距
+                )
                 Text(                                     // 底部说明（HTML .set-hint）
                     text = "选择后立即保存，并应用于设备自检等后续操作；两者均不选时默认使用基础权限。",  // 文案
                     style = MaterialTheme.typography.labelSmall,  // 小字（HTML 12px）
@@ -97,6 +102,13 @@ fun PermissionScreen(                                    // 权限管理页
             }
         }
     }
+}
+
+/** 能力等级 → 中文展示（页面「当前真实权限」显示用）。 */
+private fun levelLabel(level: PrivilegeManager.Level): String = when (level) {  // 等级转中文
+    PrivilegeManager.Level.NONE -> "无（仅基础权限）"        // 无提权
+    PrivilegeManager.Level.SHIZUKU_ADB -> "Shizuku ADB"    // adb 提权
+    PrivilegeManager.Level.SHIZUKU_ROOT -> "Shizuku ROOT"  // root 提权
 }
 
 /** 权限单选卡片：图标 + 名称/描述 + 圆形勾选（对应 HTML .perm-choice）。 */
@@ -171,24 +183,66 @@ private fun PermChoice(                                  // 单选卡片
     }
 }
 
-/** 权限管理 ViewModel —— 模式读写（选中即持久化）。 */
+/** 权限管理 ViewModel —— 模式读写 + 真实权限验证（切换时校验是否真有该权限）。 */
 @HiltViewModel                                           // 注解：由 Hilt 创建
 class PermissionViewModel @Inject constructor(           // 构造函数注入
     private val prefs: ExtPrefs,                         // 注入扩展偏好
+    private val privilege: PrivilegeManager,             // 注入提权管理器（真实权限检测/授权）
 ) : ViewModel() {                                        // 继承 ViewModel
 
     private val _mode = MutableStateFlow("basic")        // 当前模式（默认基础）
     val mode: StateFlow<String> = _mode.asStateFlow()    // 只读暴露
 
+    /** 真实能力等级（Shizuku-adb / Shizuku-root / NONE），页面实时展示。 */
+    val level: StateFlow<PrivilegeManager.Level> = privilege.level  // 真实等级状态流
+
+    /** 切换结果提示（验证成功/失败原因）。 */
+    private val _message = MutableStateFlow<String?>(null)  // 提示消息（null=无）
+    val message: StateFlow<String?> = _message.asStateFlow()  // 只读暴露
+
     init {                                                // 初始化
         viewModelScope.launch {                          // 协程中收集
-            prefs.permMode.collect { _mode.value = it }  // 同步模式
+            prefs.permMode.collect { _mode.value = it }  // 同步已保存模式
         }
     }
 
-    /** 切换模式（HTML selectPermMode：选中即保存）。 */
+    /** 消费提示消息（Toast 展示后置空，避免重复弹）。 */
+    fun consumeMessage() { _message.value = null }        // 清空消息
+
+    /** 切换模式：真实验证权限，验证通过才切换并持久化，否则提示失败原因。 */
     fun setMode(m: String) {                              // 切换模式
-        _mode.value = m                                  // 立即更新 UI
+        when (m) {                                       // 按目标模式分支
+            "basic" -> applyMode(m, "已切换为基础权限")   // 基础：无需权限，直接切
+            "adb" -> requestAdb()                        // ADB：经 Shizuku 授权
+            "root" -> verifyRoot()                       // ROOT：验证 root 权限
+        }
+    }
+
+    /** 请求 ADB 权限（Shizuku 授权）；已授权则直接切，否则弹 Shizuku 授权页。 */
+    private fun requestAdb() {                            // ADB 授权
+        if (privilege.hasPermission()) {                 // 已获 Shizuku 授权
+            applyMode("adb", "已启用 ADB 权限")           // 直接切换
+        } else {                                         // 未授权
+            privilege.requestAdbPermission { granted ->  // 弹 Shizuku 授权页
+                if (granted) applyMode("adb", "已启用 ADB 权限（Shizuku 授权成功）")  // 授权成功
+                else _message.value = "ADB 权限启用失败：Shizuku 未授权或服务未启动"  // 授权失败
+            }
+        }
+    }
+
+    /** 验证 ROOT 权限：需设备已 root 且 Shizuku 在线（SHIZUKU_ROOT 等级）。 */
+    private fun verifyRoot() {                            // ROOT 验证
+        if (privilege.currentLevel() == PrivilegeManager.Level.SHIZUKU_ROOT) {  // 已达 root 等级
+            applyMode("root", "已启用 ROOT 权限")          // 切换
+        } else {                                         // 无 root
+            _message.value = "ROOT 权限启用失败：设备未 ROOT 或未授予 root 权限（请先确认设备已 ROOT 并在 Shizuku 中授权）"  // 失败原因
+        }
+    }
+
+    /** 应用模式：更新 UI + 持久化 + 发提示。 */
+    private fun applyMode(m: String, msg: String) {       // 应用模式
+        _mode.value = m                                  // 更新 UI
         viewModelScope.launch { prefs.setPermMode(m) }   // 持久化
+        _message.value = msg                             // 发提示
     }
 }
