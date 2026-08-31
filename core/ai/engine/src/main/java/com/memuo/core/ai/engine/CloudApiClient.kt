@@ -61,6 +61,31 @@ class CloudApiClient @Inject constructor(                 // 构造函数注入
         attempt(config, messages, system, onDelta, onDone, attempt = 1)  // 第 1 次尝试
     }
 
+    /**
+     * 测试连接：GET {baseUrl}/models 探测 API 可达性与密钥有效性（M-045，替代原 Math.random 模拟）。
+     * @param baseUrl API 地址
+     * @param apiKey 密钥
+     * @param onResult 结果回调：成功回 "OK"，失败回 "ERR:具体原因"（复用错误分类文案）
+     */
+    fun testConnection(baseUrl: String, apiKey: String, onResult: (String) -> Unit) {  // 测试连接方法
+        val request = Request.Builder()                   // 构造 GET 请求
+            .url(baseUrl.trimEnd('/') + "/models")        // OpenAI 兼容端点（列模型，探测认证）
+            .header("Authorization", "Bearer $apiKey")    // 认证头（测试密钥有效性）
+            .get()                                        // GET 请求
+            .build()                                      // 构建
+        okHttp.newCall(request).enqueue(object : Callback {  // 异步执行
+            override fun onResponse(call: Call, response: Response) {  // 收到响应
+                val result = if (response.isSuccessful) "OK"  // 2xx → 成功
+                else "ERR:${classifyHttpError(response.code)}" // 非 2xx → 分类错误
+                response.close()                         // 释放连接
+                onResult(result)                         // 回调结果
+            }
+            override fun onFailure(call: Call, e: IOException) {  // 连接失败（超时/不可达）
+                onResult("ERR:${classifyIoError(e)}")    // 分类错误回调
+            }
+        })
+    }
+
     /** 单次请求尝试（带重试判定）。 */
     private fun attempt(                                  // 单次尝试
         config: CloudConfig,                              // 配置

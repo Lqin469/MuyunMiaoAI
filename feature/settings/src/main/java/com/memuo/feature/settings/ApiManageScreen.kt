@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp                        // 导入 sp：字号�
 import androidx.hilt.navigation.compose.hiltViewModel     // 导入 hiltViewModel：Hilt 提供 ViewModel
 import androidx.lifecycle.ViewModel                       // 导入 ViewModel：UI 数据持有者
 import androidx.lifecycle.viewModelScope                  // 导入 viewModelScope：协程作用域
+import com.memuo.core.ai.engine.CloudApiClient             // 导入云端 API 客户端（测试连接真实现）
 import com.memuo.core.ui.AppIcons                          // 导入应用图标集
 import com.memuo.core.ui.components.BrandButton            // 导入品牌主按钮
 import com.memuo.core.ui.components.EmptyState            // 导入空态组件
@@ -572,6 +573,7 @@ private fun ApiTextField(                                // 圆角输入框
 class ApiManageViewModel @Inject constructor(            // 构造函数注入
     private val prefs: ExtPrefs,                         // 注入扩展偏好
     private val cloudRepo: CloudConfigRepository,        // 注入云端仓库（当前 API 同步引擎）
+    private val cloudClient: CloudApiClient,             // 注入云端客户端（测试连接真实现）
 ) : ViewModel() {                                        // 继承 ViewModel
 
     private val _apis = MutableStateFlow<List<ApiEntry>>(emptyList())  // API 列表
@@ -737,7 +739,7 @@ class ApiManageViewModel @Inject constructor(            // 构造函数注入
         return ParsedApiConfig(url = url, key = key, model = model, name = name)  // 返回结果
     }
 
-    /** 测试连接（模拟，HTML testApiForm：75% 成功率）。 */
+    /** 测试连接（真实：GET /models 探测可达性与密钥有效性，M-045）。 */
     fun testConnection() {                               // 测试连接
         val url = _formUrl.value.trim()                  // 地址
         val key = _formKey.value.trim()                  // 密钥
@@ -746,14 +748,12 @@ class ApiManageViewModel @Inject constructor(            // 构造函数注入
             return
         }
         _testState.value = "正在测试连接…" to StatusTone.INFO  // 测试中
-        viewModelScope.launch {                          // 协程中模拟延迟
-            kotlinx.coroutines.delay(1200)               // 1.2 秒
-            val ok = Math.random() > 0.25                // 75% 成功
-            _testState.value = if (ok) {                 // 成功
+        cloudClient.testConnection(url, key) { result ->  // 真实测试（GET /models 探测）
+            _testState.value = if (result == "OK") {     // 成功
                 val model = _formModel.value.trim()      // 模型名
                 (if (model.isNotBlank()) "连接成功 · 已识别模型 $model" else "连接成功") to StatusTone.SUCCESS  // 成功文案
-            } else {                                     // 失败
-                "连接失败，请检查地址与密钥" to StatusTone.FAIL  // 失败文案
+            } else {                                     // 失败（显示具体原因）
+                result.removePrefix("ERR:") to StatusTone.FAIL  // 具体错误文案（认证失败/网络不可用等）
             }
         }
     }
