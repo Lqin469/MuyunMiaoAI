@@ -16,7 +16,7 @@
 | 显式触发唯一入口 | `SearchConsentGate`（`beginUserInitiated` 放行 / `beginScheduled` 需显式开关） | core:search/consent |
 | 无会话禁止执行 | `FileIndexer.index()` 无 `SearchSession` 抛 `UnauthorizedSearchException` | core:search/index |
 | 进度实时上报 | `SearchProgress` + `SearchProgressListener`（每 200 文件或 1% 必报） | core:search/progress |
-| UI 进度条 + 停止 | `SearchProgressBar`（百分比 / 计数 / 当前路径 / 停止按钮） | feature:filesearch |
+| UI 进度呈现 | 经 `SearchProgressListener` 回调呈现进度；独立检索页（feature:filesearch）已移除（M8.6），搜索经 AI 工具 `search_file` 在对话中完成 | core:search → 调用方 |
 | 审计留痕 | `consent_audit` 表记录每次触发与结果 | core:search/audit（M1 落库） |
 | 默认关闭后台 | `SearchSettings.backgroundIndexingEnabled` 默认 **false** | feature:settings（M1 实现） |
 
