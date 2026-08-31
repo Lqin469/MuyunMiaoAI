@@ -75,7 +75,6 @@ class NoteListViewModel @Inject constructor(             // 构造函数注入
     }
 
     /** 从回收站恢复一条笔记。 */
-    /** 从回收站恢复一条笔记。 */
     fun restoreNote(id: Long) {                          // 恢复笔记
         viewModelScope.launch {                          // 协程中执行
             noteDao.restore(id)                          // 清空软删除时间
@@ -95,6 +94,13 @@ class NoteListViewModel @Inject constructor(             // 构造函数注入
     fun emptyTrash() {                                   // 清空回收站
         viewModelScope.launch {                          // 协程中执行
             val trashedIds = noteDao.observeTrashed().first().map { it.id }  // 清空前先取全部软删除 ID
+            trashedIds.forEach { id ->                   // 逐个物理删除并通知知识库
+                noteDao.purge(id)                        // 物理删除单条
+                bridge.emitChanged(id, NoteChanged.Action.DELETED)  // 发布删除事件，知识库清理对应分块/文档
+            }
+        }
+    }
+
     /** 更新笔记正文（保存时调用）。 */
     fun updateContent(id: Long, title: String, content: String) {  // 更新内容方法
         viewModelScope.launch {                          // 协程中执行

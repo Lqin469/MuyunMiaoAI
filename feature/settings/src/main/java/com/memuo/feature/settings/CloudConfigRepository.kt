@@ -33,7 +33,6 @@ class CloudConfigRepository @Inject constructor(         // 构造函数注入
 ) : CloudConfigProvider {                                // 实现云端配置提供者接口
 
     /** 加密偏好存储（apiKey 专用）：主密钥来自 Android Keystore，值用 AES256_GCM 加密。 */
-    /** 加密偏好存储（apiKey 专用）：主密钥来自 Android Keystore，值用 AES256_GCM 加密。 */
     private val securePrefs: SharedPreferences by lazy { // 懒加载加密存储
         runCatching {                                    // 容错：Keystore 损坏/个别设备失败时不崩溃
             val masterKey = MasterKey.Builder(context)    // 构建主密钥（Keystore 生成，永不离开设备）
@@ -46,6 +45,11 @@ class CloudConfigRepository @Inject constructor(         // 构造函数注入
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,   // 键名也加密
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM, // 值加密
             )
+        }.getOrElse {                                    // 容错：加密存储初始化失败时回退普通偏好（不崩溃）
+            context.getSharedPreferences("secure_cloud_prefs", Context.MODE_PRIVATE)  // 回退普通偏好（仅兜底）
+        }
+    }
+
     /** 读取当前云端配置；未配置完整则返回 null（UI 据此提示"未配置"）。 */
     override suspend fun current(): CloudConfig? {       // 读取配置方法
         val prefs = context.cloudSettingsDataStore.data.first()  // 读 DataStore（非敏感项）

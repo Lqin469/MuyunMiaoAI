@@ -58,9 +58,10 @@ class SettingsRepository @Inject constructor(            // 构造函数注入�
     override val engineType: StateFlow<EngineType> =      // 实现引擎设置接口：只读引擎类型
         context.settingsDataStore.data                    // 读 DataStore 偏好流
             .map { prefs ->                              // 转换
-                EngineType.valueOf(prefs[KEY_ENGINE_TYPE] ?: EngineType.CLOUD.name)  // 字符串转枚举，默认 CLOUD
                 runCatching { EngineType.valueOf(prefs[KEY_ENGINE_TYPE] ?: EngineType.CLOUD.name) }  // 字符串转枚举（容错）
                     .getOrDefault(EngineType.CLOUD)        // 非法值回退云端
+            }                                            // map 转换结束
+            .stateIn(scope, SharingStarted.Eagerly, EngineType.CLOUD)  // 转热状态流，初始 CLOUD
 
     /** 设置对话引擎类型（用户在设置页切换引擎时调用）。 */
     override suspend fun setEngineType(type: EngineType) {  // 实现引擎设置接口：写入

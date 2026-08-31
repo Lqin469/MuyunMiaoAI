@@ -79,8 +79,8 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
         viewModelScope.launch {                          // 协程中复制（大文件走 IO）
             val ok = importer.importMnnToAppDir(File(path))  // 复制模型
             _hasLocalModel.value = ok                     // 更新就绪状态
-            _message.value = if (ok) "模型导入成功，可切换到本地引擎" else "导入失败：目录无效（需含 config.json + llm.mnn + llm.mnn.weight）"  // 提示
             _message.value = if (ok) "模型导入成功，可切换到本地引擎" else "导入失败：目录无效（需含 config.json + llm.mnn + llm.mnn.weight + tokenizer.txt，多模态模型还需 visual.mnn + visual.mnn.weight）"  // 提示
+        }
     }
 
     /** 从 SAF 文件夹选择器选中的目录导入模型（检测 + 复制）。 */
@@ -88,8 +88,8 @@ class SettingsViewModel @Inject constructor(             // 构造函数注入
         viewModelScope.launch {                          // 协程中复制
             val ok = importer.importFromUri(context, uri)  // 检测并复制
             _hasLocalModel.value = ok                     // 更新就绪状态
-            _message.value = if (ok) "模型导入成功，可切换到本地引擎" else "导入失败：所选文件夹不是有效模型（需含 config.json + llm.mnn + llm.mnn.weight）"  // 提示
             _message.value = if (ok) "模型导入成功，可切换到本地引擎" else "导入失败：所选文件夹不是有效模型（需含 config.json + llm.mnn + llm.mnn.weight + tokenizer.txt，多模态模型还需 visual.mnn + visual.mnn.weight）"  // 提示
+        }
     }
 
     /** 复制模型下载地址到剪贴板（用户自行到浏览器下载，再回来导入）。 */
