@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize     // 导入 fillMaxSize�
 import androidx.compose.foundation.layout.fillMaxWidth    // 导入 fillMaxWidth：占满宽度
 import androidx.compose.foundation.layout.heightIn        // 导入 heightIn：高度约束
 import androidx.compose.foundation.layout.padding          // 导入 padding：内边距
+import androidx.compose.foundation.layout.widthIn          // 导入 widthIn：宽度约束（弹窗限宽）
 import androidx.compose.foundation.shape.RoundedCornerShape  // 导入 RoundedCornerShape：圆角形状
 import androidx.compose.material3.Icon                    // 导入 Icon：图标
 import androidx.compose.material3.Text                    // 导入 Text：文本
@@ -65,29 +66,37 @@ fun MuyunModal(                                          // 弹窗容器
                 enter = scaleIn(initialScale = 0.92f),   // 从 92% 放大进入（HTML scale(0.92)→1）
                 exit = scaleOut(targetScale = 0.92f),    // 缩小退出
             ) {
-                Column(                                  // 卡片主体
-                    modifier = modifier                 // 外部修饰
-                        .fillMaxWidth()                 // 占满宽度（受父级 padding 约束）
-                        .heightIn(max = 600.dp)         // 最大高度（HTML max-height 84vh 近似）
-                        .clip(RoundedCornerShape(20.dp))  // 圆角 20（HTML .modal border-radius）
-                        .background(MuyunCard)          // 白底
-                        .padding(20.dp),                // 内边距 20（HTML .modal padding）
+                Box(                                     // 水平留白容器（响应式：卡片不贴屏幕边缘）
+                    modifier = Modifier                 // 修饰
+                        .fillMaxWidth()                 // 占满宽度
+                        .padding(horizontal = 24.dp),   // 屏幕两侧 24dp 留白（HTML 弹窗左右边距）
+                    contentAlignment = Alignment.Center,  // 卡片居中
                 ) {
-                    Row(                                 // 标题栏
-                        modifier = Modifier.fillMaxWidth(),  // 占满宽度
-                        verticalAlignment = Alignment.CenterVertically,  // 垂直居中
+                    Column(                              // 卡片主体
+                        modifier = modifier             // 外部修饰
+                            .widthIn(max = maxWidth)    // 最大宽度（宽屏封顶，默认 390dp）
+                            .fillMaxWidth()             // 占满宽度（窄屏填满留白区）
+                            .heightIn(max = 600.dp)     // 最大高度（HTML max-height 84vh 近似）
+                            .clip(RoundedCornerShape(20.dp))  // 圆角 20（HTML .modal border-radius）
+                            .background(MuyunCard)      // 白底
+                            .padding(20.dp),            // 内边距 20（HTML .modal padding）
                     ) {
-                        Text(                            // 标题
-                            text = title,                // 标题文字
-                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,  // 字体
-                            fontWeight = FontWeight.Bold,  // 粗体（HTML .modal-title 700）
-                            color = MuyunText,           // 主文字色
-                            modifier = Modifier.weight(1f),  // 占满剩余
-                        )
-                        headerActions()                  // 右侧操作（设置/关闭按钮）
+                        Row(                                 // 标题栏
+                            modifier = Modifier.fillMaxWidth(),  // 占满宽度
+                            verticalAlignment = Alignment.CenterVertically,  // 垂直居中
+                        ) {
+                            Text(                            // 标题
+                                text = title,                // 标题文字
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,  // 字体
+                                fontWeight = FontWeight.Bold,  // 粗体（HTML .modal-title 700）
+                                color = MuyunText,           // 主文字色
+                                modifier = Modifier.weight(1f),  // 占满剩余
+                            )
+                            headerActions()                  // 右侧操作（设置/关闭按钮）
+                        }
+                        body()                               // 弹窗主体
+                        footer()                             // 底部按钮区
                     }
-                    body()                               // 弹窗主体
-                    footer()                             // 底部按钮区
                 }
             }
         }

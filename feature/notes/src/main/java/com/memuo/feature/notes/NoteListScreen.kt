@@ -1,5 +1,6 @@
 package com.memuo.feature.notes                         // 声明包名：笔记业务模块
 
+import androidx.compose.foundation.ExperimentalFoundationApi  // 导入 ExperimentalFoundationApi：animateItem 实验 API
 import androidx.compose.foundation.background             // 导入 background：背景修饰
 import androidx.compose.foundation.clickable              // 导入 clickable：点击修饰
 import androidx.compose.foundation.layout.Box             // 导入 Box：盒式布局
@@ -32,6 +33,7 @@ import com.memuo.core.ui.AppIcons                         // 导入应用图标�
 import com.memuo.core.ui.components.EmptyState            // 导入空态组件
 import com.memuo.core.ui.components.LocalToast            // 导入 Toast 状态
 import com.memuo.core.ui.components.SwipeToReveal         // 导入左滑删除容器
+import com.memuo.core.ui.components.pressClickable        // 导入按压缩放反馈
 import com.memuo.core.ui.theme.MuyunCard                  // 导入卡片白
 import com.memuo.core.ui.theme.MuyunText                  // 导入主文字色
 import com.memuo.core.ui.theme.MuyunText2                 // 导入次级文字色
@@ -46,6 +48,7 @@ import java.util.Locale                                   // 导入 Locale：区
  * 对应 HTML 行为：计数头部 + 卡片（标题/两行摘要/时间）+ 左滑露出删除（移入回收站）
  * + 空态插图 + 点击卡片进编辑。
  */
+@OptIn(ExperimentalFoundationApi::class)                 // animateItem 为实验 API（列表项增删平滑过渡）
 @Composable                                               // 可组合 UI 函数
 fun NoteListScreen(                                       // 笔记列表页
     onOpenNote: (Long) -> Unit,                           // 打开某条笔记的回调（跳转编辑页）
@@ -89,7 +92,7 @@ fun NoteListScreen(                                       // 笔记列表页
                             revealedId = null             // 收起
                             toast.show("已移入回收站")     // Toast 提示
                         },
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 5.dp),  // 卡片间距
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 5.dp).animateItem(),  // 卡片间距 + 增删/重排平滑过渡
                     ) {
                         MemoCard(                         // 备忘录卡片
                             note = note,                  // 笔记数据
@@ -117,7 +120,7 @@ private fun MemoCard(                                     // 备忘录卡片
             .shadow(1.dp, RoundedCornerShape(14.dp))      // 轻投影（HTML --shadow）
             .clip(RoundedCornerShape(14.dp))              // 圆角 14
             .background(MuyunCard)                        // 白底（遮住底层红色删除层）
-            .clickable { onClick() }                      // 点击
+            .pressClickable { onClick() }                 // 点击（按压缩放反馈）
             .padding(horizontal = 16.dp, vertical = 14.dp),  // 内边距（HTML padding 14px 16px）
     ) {
         Text(                                             // 标题行

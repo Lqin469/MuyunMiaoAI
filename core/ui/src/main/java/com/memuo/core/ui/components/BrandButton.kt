@@ -51,7 +51,7 @@ fun BrandButton(                                         // 品牌主按钮
                 if (enabled) MuyunBrandGradient          // 可用：品牌渐变
                 else SolidColor(MuyunDisabled),          // 禁用：浅灰纯色画刷
             )
-            .clickable(enabled = enabled) { onClick() }, // 点击触发（禁用时不响应）
+            .pressClickable(enabled = enabled) { onClick() },  // 点击触发（按压缩放反馈，禁用时不响应）
         contentAlignment = Alignment.Center,             // 内容居中
     ) {
         Text(                                            // 按钮文字

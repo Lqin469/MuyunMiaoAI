@@ -55,6 +55,7 @@ import androidx.compose.ui.draw.clip                       // 导入 clip：裁�
 import androidx.compose.ui.draw.shadow                     // 导入 shadow：投影
 import androidx.compose.ui.graphics.Color                  // 导入 Color：颜色
 import androidx.compose.ui.input.pointer.pointerInput       // 导入 pointerInput：滑动手势
+import androidx.compose.ui.platform.LocalConfiguration      // 导入 LocalConfiguration：屏幕配置（抽屉自适应宽）
 import androidx.compose.ui.text.font.FontWeight            // 导入 FontWeight：字重
 import androidx.compose.ui.unit.dp                         // 导入 dp：尺寸单位
 import androidx.hilt.navigation.compose.hiltViewModel      // 导入 hiltViewModel：Hilt 提供 ViewModel
@@ -78,6 +79,7 @@ import com.memuo.core.ui.components.ToastHost              // 导入 Toast 宿�
 import com.memuo.core.ui.components.ToastState             // 导入 Toast 状态类
 import com.memuo.core.ui.components.WallpaperBackground    // 导入壁纸背景
 import com.memuo.core.ui.components.WallpaperRenderMode    // 导入渲染方式
+import com.memuo.core.ui.components.pressClickable         // 导入按压缩放反馈
 import com.memuo.core.ui.rememberBitmap                    // 导入位图加载
 import com.memuo.core.ui.theme.MuyunAccentLight            // 导入浅灰底
 import com.memuo.core.ui.theme.MuyunBar                    // 导入顶栏半透明背景
@@ -313,7 +315,8 @@ private fun RootNav(                                     // 导航主体
                 navController = nav,                      // 导航控制器
                 startDestination = if (skipCheck) "note/list" else "device-check",  // 首次启动先自检
                 modifier = Modifier.padding(innerPadding),  // 避开顶部栏
-                // 统一快速淡入淡出过渡：去除默认的滑动/组合动画，切换迅速、干净、自然
+                // 统一快速淡入淡出过渡：纯 alpha 插值（GPU 轻量），不叠加 scale/滑动，
+                // 避免「常规|AI」切换瞬间与胶囊颜色动画叠加造成卡顿。
                 enterTransition = { fadeIn(animationSpec = tween(160)) },        // 进入：160ms 淡入
                 exitTransition = { fadeOut(animationSpec = tween(120)) },        // 退出：120ms 淡出
                 popEnterTransition = { fadeIn(animationSpec = tween(160)) },     // 返回进入：160ms 淡入
@@ -529,8 +532,11 @@ private fun AppDrawer(                                    // 侧边菜单
     onLan: () -> Unit,                                    // 局域网传输回调
 ) {
     val conversations by chatViewModel.conversations.collectAsState()  // 订阅会话列表
+    // 抽屉宽度自适应：窄屏取屏宽 85%，宽屏（平板）封顶 300dp，避免小屏遮挡过宽
+    val config = LocalConfiguration.current                 // 屏幕配置
+    val drawerWidth = minOf(300.dp, config.screenWidthDp.dp * 0.85f)  // 响应式抽屉宽
 
-    ModalDrawerSheet(modifier = Modifier.width(300.dp)) {  // 抽屉面板（宽 300dp，HTML .sidebar）
+    ModalDrawerSheet(modifier = Modifier.width(drawerWidth)) {  // 抽屉面板（宽自适应，HTML .sidebar）
         Column(                                           // 纵向菜单
             modifier = Modifier                          // 修饰
                 .fillMaxHeight()                         // 占满高度
@@ -680,7 +686,7 @@ private fun DrawerAiButton(                              // AI 大按钮
             .shadow(1.dp, RoundedCornerShape(12.dp))     // 轻投影（HTML --shadow）
             .clip(RoundedCornerShape(12.dp))             // 圆角 12
             .background(MuyunCard)                       // 白底
-            .clickable { onClick() }                     // 点击
+            .pressClickable { onClick() }                // 点击（按压缩放反馈）
             .padding(horizontal = 14.dp, vertical = 13.dp),  // 内边距
         verticalAlignment = Alignment.CenterVertically,   // 垂直居中
     ) {
@@ -718,7 +724,7 @@ private fun DrawerMenuItem(                              // 菜单行
     Row(                                                  // 横向布局
         modifier = Modifier                              // 修饰
             .fillMaxWidth()                              // 占满宽度
-            .clickable { onClick() }                     // 点击
+            .pressClickable { onClick() }                // 点击（按压缩放反馈）
             .padding(horizontal = 20.dp, vertical = 12.dp),  // 内边距（HTML padding 14px 12px）
         verticalAlignment = Alignment.CenterVertically,   // 垂直居中
     ) {

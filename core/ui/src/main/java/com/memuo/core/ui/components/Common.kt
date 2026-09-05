@@ -120,7 +120,7 @@ fun SettingsMenuRow(                                     // 设置菜单行
     Row(                                                 // 横向布局
         modifier = modifier                             // 外部修饰
             .fillMaxWidth()                             // 占满宽度
-            .clickable { onClick() }                    // 点击
+            .pressClickable { onClick() }               // 点击（按压缩放反馈）
             .padding(vertical = 14.dp),                 // 上下 14（HTML padding 14px 0）
         verticalAlignment = Alignment.CenterVertically,  // 垂直居中
     ) {

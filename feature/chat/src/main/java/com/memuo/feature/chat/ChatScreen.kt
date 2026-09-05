@@ -147,11 +147,18 @@ fun ChatScreen(                                           // 对话页
     }
 
     // 语音识别真实现：麦克风 → 权限检查 → 系统 SpeechRecognizer 识别 → 结果填入输入框
-    val speechRecognizer = remember {                     // 懒创建识别器（设备不支持则 null）
-        if (SpeechRecognizer.isRecognitionAvailable(context)) SpeechRecognizer.createSpeechRecognizer(context) else null  // 系统支持则创建
+    // 识别器「首次点麦克风」才懒创建（而非页面首次组合时创建）：SpeechRecognizer.createSpeechRecognizer
+    // 是 binder 调用，若在切到 AI 页的首次组合阶段同步执行会阻塞主线程，导致「常规|AI」切换过渡动画掉帧。
+    var speechRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }  // 识别器（null=尚未创建）
+    fun ensureRecognizer(): SpeechRecognizer? {           // 按需懒创建识别器
+        speechRecognizer?.let { return it }               // 已创建直接复用
+        return if (SpeechRecognizer.isRecognitionAvailable(context)) {  // 系统支持识别
+            runCatching { SpeechRecognizer.createSpeechRecognizer(context) }.getOrNull()  // 创建（容错，失败 null）
+                .also { speechRecognizer = it }           // 缓存
+        } else null                                      // 不支持 → null
     }
     fun startVoiceListening() {                          // 启动真实语音识别（局部函数，供权限回调/录音态调用）
-        val sr = speechRecognizer ?: return               // 无识别器直接返回
+        val sr = ensureRecognizer() ?: return             // 无识别器直接返回
         sr.setRecognitionListener(object : RecognitionListener {  // 识别回调
             override fun onResults(results: android.os.Bundle?) {  // 最终识别结果
                 val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()  // 取第一个候选
@@ -192,7 +199,7 @@ fun ChatScreen(                                           // 对话页
     LaunchedEffect(recording) {                          // 录音态变化
         if (recording) {                                 // 开始语音输入
             when {                                       // 分支处理
-                speechRecognizer == null -> {            // 设备不支持
+                !SpeechRecognizer.isRecognitionAvailable(context) -> {  // 设备不支持
                     recording = false                    // 复位
                     toast.show("当前设备不支持语音识别")    // 提示
                 }
