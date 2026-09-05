@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# ============================================================
+# post-commit — git post-commit 钩子
+# 作用：每次 commit 后自动后台推送（无需手动同意），不阻塞 commit。
+# 说明：Windows 默认 schannel 后端会报 SSL 吊销错误，必须用 openssl + 关闭校验。
+#       推送结果写入 scripts/auto-commit-push.log，失败不阻断（下轮脚本会重试）。
+# ============================================================
+
+# 定位项目根目录（钩子所在目录的上一级）
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT" || exit 0
+
+# 后台异步推送（nohup + & 避免阻塞 commit；日志追加到自动推送脚本日志）
+nohup git -c http.sslBackend=openssl -c http.sslVerify=false push origin main \
+  >> "$ROOT/scripts/auto-commit-push.log" 2>&1 &
+
+# 始终返回 0：不让推送结果阻塞 commit 流程
+exit 0
