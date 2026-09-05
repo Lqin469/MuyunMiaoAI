@@ -26,9 +26,21 @@ class HybridRetriever @Inject constructor(               // 构造函数注入
      * @param query 用户问题
      * @param topK 返回条数
      */
-    suspend fun retrieve(folderId: String, query: String, topK: Int = 8): List<RetrievedChunk> {  // 检索方法
+    suspend fun retrieve(folderId: String, query: String, topK: Int = 8): List<RetrievedChunk> =  // 按知识库检索
+        doRetrieve(query, kbDao.chunksByFolder(folderId), kbDao.searchByKeyword(folderId, query, topK * 2), topK)
+
+    /** 全库检索（跨知识库，AI 对话统一检索用）。 */
+    suspend fun retrieveAll(query: String, topK: Int = 8): List<RetrievedChunk> =  // 全库检索
+        doRetrieve(query, kbDao.chunksAll(), kbDao.searchByKeywordAll(query, topK * 2), topK)
+
+    /** 检索核心：语义（余弦相似度）+ 关键词（LIKE）RRF 融合。 */
+    private suspend fun doRetrieve(                        // 检索核心
+        query: String,                                     // 问题
+        candidates: List<KbChunk>,                         // 候选分块
+        keywordHits: List<KbChunk>,                        // 关键词命中
+        topK: Int,                                         // 返回条数
+    ): List<RetrievedChunk> {                             // 返回结果
         val qVec = embedder.embed(listOf(query)).first()  // 把问题编码为向量
-        val candidates = kbDao.chunksByFolder(folderId)   // 取该知识库全部分块（候选集）
 
         val semantic = candidates                          // 语义检索
             .map { c ->                                   // 逐块计算相似度
@@ -40,9 +52,7 @@ class HybridRetriever @Inject constructor(               // 构造函数注入
             .sortedByDescending { it.second }              // 相似度降序
             .take(topK * 2)                                // 取前 2*topK 作为语义候选
 
-        val keyword = kbDao.searchByKeyword(folderId, query, topK * 2)  // 关键词检索（LIKE 模糊匹配）
-
-        return rrfMerge(semantic, keyword, topK)           // RRF 融合后取 topK
+        return rrfMerge(semantic, keywordHits, topK)       // RRF 融合后取 topK
     }
 
     /** 倒数排名融合（RRF）：合并语义与关键词两组候选，按排名倒数求和。 */

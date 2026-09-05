@@ -39,6 +39,7 @@ import javax.inject.Inject                                // 导入 Inject：构
 fun SettingsHomeScreen(                                   // 设置主页
     onBack: () -> Unit,                                   // 返回回调
     onWallpaper: () -> Unit,                              // 自定义壁纸
+    onStorage: () -> Unit,                                // 存储位置（R5）
     onMigrate: () -> Unit,                                // 数据迁移
     onApi: () -> Unit,                                    // 云端API管理
     onPermission: () -> Unit,                             // 权限管理

@@ -41,6 +41,7 @@ fun MuyunModal(                                          // 弹窗容器
     onDismiss: () -> Unit,                               // 点遮罩关闭回调
     title: String,                                       // 弹窗标题
     maxWidth: Dp = 390.dp,                               // 最大宽度（HTML .modal max-width 390）
+    dismissOnClickOutside: Boolean = true,               // 点遮罩是否关闭（局域网传输等传 false）
     modifier: Modifier = Modifier,                       // 卡片外部修饰
     headerActions: @Composable () -> Unit = {},          // 标题栏右侧操作（如设置/关闭）
     body: @Composable ColumnScope.() -> Unit,            // 弹窗主体
@@ -56,7 +57,7 @@ fun MuyunModal(                                          // 弹窗容器
             modifier = Modifier                         // 修饰
                 .fillMaxSize()                          // 铺满
                 .background(MuyunScrim)                 // 半透明黑（HTML rgba(0,0,0,0.25)）
-                .clickable { onDismiss() },              // 点遮罩关闭
+                .clickable(enabled = dismissOnClickOutside) { onDismiss() },  // 点遮罩关闭（可配置）
             contentAlignment = Alignment.Center,         // 内容居中
         ) {
             AnimatedVisibility(                          // 卡片动画（独立于遮罩淡入）

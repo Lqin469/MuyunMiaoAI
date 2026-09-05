@@ -89,16 +89,27 @@ fun LanTransferDialog(                                   // 局域网传输弹�
     val settingsVisible by viewModel.settingsVisible.collectAsState()  // 设置弹窗
     val receiveMode by viewModel.receiveMode.collectAsState()  // 接收方式
     val savePath by viewModel.savePath.collectAsState()  // 保存路径
+    val receiveTip by viewModel.receiveTip.collectAsState()  // 接收提示
     val toast = LocalToast.current                       // 取全局 Toast
     val context = LocalContext.current                   // 取上下文
     var text by remember { mutableStateOf("") }          // 文本内容
     var picked by remember { mutableStateOf<File?>(null) }  // 已选文件（真实路径）
+    var editName by remember { mutableStateOf("") }      // 本机名编辑
+
+    LaunchedEffect(receiveTip) {                         // 接收提示 → Toast
+        receiveTip?.let { toast.show(it); viewModel.consumeReceiveTip() }  // 弹提示并消费
+    }
 
     // SAF 文件选择器（文本/文件/图片共用，按类型给 MIME 提示）
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->  // 选择器
         uri?.let { u ->                                  // 选中
             picked = viewModel.cachePicked(context, u)   // 缓存到应用目录（避免 Uri 权限过期）
         }
+    }
+
+    // SAF 目录选择器（自定义接收目录）
+    val dirPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->  // 目录选择器
+        uri?.let { u -> viewModel.setSavePath(context, u) }  // 持久化权限 + 更新路径
     }
 
     LaunchedEffect(visible) {                            // 弹窗打开时
@@ -109,6 +120,7 @@ fun LanTransferDialog(                                   // 局域网传输弹�
         visible = visible,                               // 绑定
         onDismiss = onDismiss,                           // 关闭
         title = "局域网传输",                            // 标题
+        dismissOnClickOutside = false,                   // ✅ 仅点关闭按钮退出（点遮罩不关）
         headerActions = {                                // 标题栏右侧（设置 + 关闭）
             Box(                                         // 设置按钮
                 modifier = Modifier                     // 修饰
@@ -176,40 +188,9 @@ fun LanTransferDialog(                                   // 局域网传输弹�
                     )
                 }
             }
-            // 接收设备区（本机固定，TransferServer 自动接收）
+            // 发送设备区（真实 NSD 设备；本机名 + 扫描按钮同一行）
             Row(                                          // 区头
                 modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),  // 内边距
-            ) {
-                Text(                                     // 标题
-                    text = "接收设备",                    // 内容
-                    style = MaterialTheme.typography.bodySmall,  // 字号
-                    fontWeight = FontWeight.SemiBold,    // 半粗
-                    color = MuyunText2,                  // 次级灰
-                    modifier = Modifier.weight(1f),      // 占满
-                )
-                Box(                                      // 默认本机标签
-                    modifier = Modifier                 // 修饰
-                        .clip(RoundedCornerShape(14.dp))  // 胶囊
-                        .background(MuyunAccentLight)   // 浅灰底
-                        .padding(horizontal = 12.dp, vertical = 4.dp),  // 内边距
-                ) {
-                    Text(                                 // 文字
-                        text = "默认本机",                // 内容
-                        style = MaterialTheme.typography.labelSmall,  // 小字
-                        fontWeight = FontWeight.Medium,  // 中粗
-                        color = MuyunText3,              // 三级灰
-                    )
-                }
-            }
-            LanDeviceRow(                                 // 本机行
-                device = LanDevice("本机（接收中）", "", 0, "1"),  // 本机
-                selected = true,                          // 固定选中
-                statusText = "自动接收",                  // 状态文字
-                onClick = {},                             // 不可点击
-            )
-            // 发送设备区（真实 NSD 设备）
-            Row(                                          // 区头
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 8.dp),  // 内边距
                 verticalAlignment = Alignment.CenterVertically,  // 垂直居中
             ) {
                 Text(                                     // 标题
@@ -219,8 +200,22 @@ fun LanTransferDialog(                                   // 局域网传输弹�
                     color = MuyunText2,                  // 次级灰
                     modifier = Modifier.weight(1f),      // 占满
                 )
+                Box(                                      // 本机名标签
+                    modifier = Modifier                 // 修饰
+                        .clip(RoundedCornerShape(14.dp))  // 胶囊
+                        .background(MuyunAccentLight)   // 浅灰底
+                        .padding(horizontal = 12.dp, vertical = 4.dp),  // 内边距
+                ) {
+                    Text(                                 // 文字
+                        text = viewModel.localName,       // 本机名（5 位随机）
+                        style = MaterialTheme.typography.labelSmall,  // 小字
+                        fontWeight = FontWeight.Medium,  // 中粗
+                        color = MuyunText3,              // 三级灰
+                    )
+                }
                 Box(                                      // 刷新按钮（重新扫描）
                     modifier = Modifier                 // 修饰
+                        .padding(start = 8.dp)          // 与本机名留白
                         .clip(RoundedCornerShape(14.dp))  // 胶囊
                         .background(MuyunAccentLight)   // 浅灰底
                         .clickable(enabled = !refreshing) { viewModel.refresh() }  // 点击重扫
@@ -311,6 +306,30 @@ fun LanTransferDialog(                                   // 局域网传输弹�
         title = "传输设置",                              // 标题
         headerActions = { ModalCloseButton { viewModel.closeSettings() } },  // 关闭按钮
         body = {                                        // 主体
+            Text(                                        // 本机名称标题
+                text = "本机名称",                       // 内容
+                style = MaterialTheme.typography.bodySmall,  // 字号
+                fontWeight = FontWeight.SemiBold,        // 半粗
+                color = MuyunText2,                      // 次级灰
+                modifier = Modifier.padding(bottom = 8.dp),  // 下留白
+            )
+            androidx.compose.foundation.text.BasicTextField(  // 本机名输入
+                value = editName,                         // 输入值
+                onValueChange = { editName = it },        // 输入变化
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MuyunText),  // 字体
+                singleLine = true,                        // 单行
+                decorationBox = { inner ->                // 占位
+                    if (editName.isEmpty()) Text(viewModel.localName, color = MuyunText3, style = MaterialTheme.typography.bodyMedium)  // 占位显示当前名
+                    inner()
+                },
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(MuyunAccentLight).padding(horizontal = 12.dp, vertical = 10.dp),  // 输入框样式
+            )
+            BrandButton(                                  // 保存名称
+                text = "保存名称",                        // 文案
+                onClick = { viewModel.setLocalName(editName); toast.show("已更新本机名"); editName = "" },  // 保存
+                height = 40.dp,                           // 较矮
+                modifier = Modifier.padding(top = 8.dp, bottom = 14.dp),  // 间距
+            )
             Text(                                        // 接收方式标题
                 text = "接收方式",                       // 内容
                 style = MaterialTheme.typography.bodySmall,  // 字号
@@ -338,11 +357,12 @@ fun LanTransferDialog(                                   // 局域网传输弹�
                 color = MuyunText2,                      // 次级灰
                 modifier = Modifier.padding(bottom = 8.dp),  // 下留白
             )
-            Box(                                          // 路径展示（只读：统一应用传输目录）
+            Box(                                          // 路径展示（点击选择自定义接收目录）
                 modifier = Modifier                       // 修饰
                     .fillMaxWidth()                       // 占满
                     .clip(RoundedCornerShape(10.dp))      // 圆角
                     .background(MuyunCard)                // 白底
+                    .clickable { dirPicker.launch(null) }  // ✅ 点击打开目录选择器
                     .padding(horizontal = 14.dp, vertical = 11.dp),  // 内边距
             ) {
                 Text(                                     // 路径文字
@@ -424,6 +444,11 @@ class LanViewModel @Inject constructor(                  // 构造函数注入
     private val _savePath = MutableStateFlow("应用私有目录/transfer/in")  // 保存路径（真实接收目录）
     val savePath: StateFlow<String> = _savePath.asStateFlow()  // 只读暴露
 
+    /** 接收提示（新收到文件/文本时弹）。 */
+    private val _receiveTip = MutableStateFlow<String?>(null)  // 接收提示消息
+    val receiveTip: StateFlow<String?> = _receiveTip.asStateFlow()  // 只读暴露
+    private val notifiedIds = mutableSetOf<String>()      // 已提示的 fileId（防重复弹）
+
     /** 设备列表（真实 NSD 发现，透传 TransferRepository）。 */
     val devices: StateFlow<List<LanDevice>> = transfer.devices  // 设备
     /** 是否扫描中。 */
@@ -431,9 +456,25 @@ class LanViewModel @Inject constructor(                  // 构造函数注入
     /** 发送会话（进度/速度/状态）。 */
     val session: StateFlow<com.memuo.core.lan.SendSession?> = transfer.sendSession  // 会话
 
+    /** 本机显示名（5 位随机，展示用）。 */
+    val localName: String get() = transfer.localName       // 本机名
+
+    /** 自定义本机名。 */
+    fun setLocalName(name: String) = transfer.setLocalName(name)  // 设置本机名
+
     init {                                                // 初始化
         viewModelScope.launch { prefs.lanReceiveMode.collect { _receiveMode.value = it } }  // 加载接收方式
         viewModelScope.launch { prefs.lanSavePath.collect { _savePath.value = it } }  // 加载路径
+        // 订阅接收会话 → 新收到的文件/文本弹提示（修复"接收端无提示"）
+        viewModelScope.launch {                          // 接收会话订阅
+            transfer.receiveSessions.collect { list ->    // 每次接收列表变化
+                list.filter { it.state == SessionState.SUCCESS && it.fileId !in notifiedIds }  // 只取新成功且未提示
+                    .forEach { s ->                       // 逐个提示
+                        notifiedIds.add(s.fileId)         // 标记已提示
+                        _receiveTip.value = "已收到「${s.name}」（${fmtSize(s.size)}）"  // 发提示
+                    }
+            }
+        }
         // 订阅会话状态 → 驱动状态条文案
         viewModelScope.launch {                          // 会话订阅
             transfer.sendSession.collect { s ->           // 每次会话变化
@@ -447,6 +488,9 @@ class LanViewModel @Inject constructor(                  // 构造函数注入
             }
         }
     }
+
+    /** 消费接收提示（Toast 展示后置空）。 */
+    fun consumeReceiveTip() { _receiveTip.value = null }  // 清空提示
 
     /** 打开弹窗：开启接收 + 广播 + 扫描。 */
     fun open() {                                         // 打开
@@ -482,12 +526,16 @@ class LanViewModel @Inject constructor(                  // 构造函数注入
         val cache = File(context.cacheDir, "lan_out")    // 缓存目录
         cache.mkdirs()                                    // 建目录
         val target = File(cache, name)                    // 目标文件
-        return runCatching {                              // 复制
+        val ok = runCatching {                           // 复制（返回是否成功）
             context.contentResolver.openInputStream(uri)?.use { input ->  // 输入流
                 target.outputStream().use { input.copyTo(it) }  // 写缓存
-            }
-            target                                        // 返回缓存文件
-        }.getOrNull()
+            } != null
+        }.getOrDefault(false)
+        if (!ok || !target.exists() || target.length() == 0L) {  // 缓存失败（空文件/复制异常）
+            _status.value = "文件读取失败，请重新选择" to StatusTone.FAIL  // ✅ 失败反馈
+            return null                                  // 返回 null
+        }
+        return target                                     // 返回缓存文件
     }
 
     /** 开始传输（真实发送：文本写临时文件，文件/图片直接发缓存文件）。 */
@@ -525,6 +573,18 @@ class LanViewModel @Inject constructor(                  // 构造函数注入
 
     /** 切换接收方式。 */
     fun setReceiveMode(mode: String) { _receiveMode.value = mode }  // 更新
+
+    /** 设置自定义接收目录（SAF 目录选择后：持久化权限 + 更新路径）。 */
+    fun setSavePath(context: android.content.Context, uri: android.net.Uri) {  // 设置接收目录
+        runCatching {                                    // 容错：持久化目录读写权限
+            context.contentResolver.takePersistableUriPermission(  // 持久化 URI 权限
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,  // 读写权限
+            )
+        }
+        _savePath.value = uri.toString()                 // 更新展示路径（存 URI，跨重启可持久）
+        viewModelScope.launch { prefs.setLanSavePath(uri.toString()) }  // 持久化
+    }
 
     /** 字节格式化（B/KB/MB/GB）。 */
     fun fmtSize(bytes: Long): String = when {            // 格式化

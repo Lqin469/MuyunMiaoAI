@@ -50,4 +50,12 @@ interface KbDao {                                          // 知识库数据访
     /** 关键词检索：按知识库在分块文本中模糊匹配（LIKE，近似 FTS）。 */
     @Query("SELECT * FROM kb_chunks WHERE folderId = :folderId AND text LIKE '%' || :keyword || '%' LIMIT :limit")  // SQL：模糊匹配
     suspend fun searchByKeyword(folderId: String, keyword: String, limit: Int): List<KbChunk>  // 返回命中的分块
+
+    /** 取全库所有分块（全库向量检索的候选集，跨知识库检索用）。 */
+    @Query("SELECT * FROM kb_chunks")                     // SQL：全库分块
+    suspend fun chunksAll(): List<KbChunk>                // 返回全部分块
+
+    /** 关键词检索（全库）：跨知识库在分块文本中模糊匹配。 */
+    @Query("SELECT * FROM kb_chunks WHERE text LIKE '%' || :keyword || '%' LIMIT :limit")  // SQL：全库模糊匹配
+    suspend fun searchByKeywordAll(keyword: String, limit: Int): List<KbChunk>  // 返回命中的分块
 }

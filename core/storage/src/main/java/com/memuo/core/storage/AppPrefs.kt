@@ -4,6 +4,7 @@ import android.content.Context                          // 导入 Context：应�
 import androidx.datastore.preferences.core.Preferences   // 导入 Preferences：DataStore 键值容器
 import androidx.datastore.preferences.core.booleanPreferencesKey  // 导入 booleanPreferencesKey：布尔键构造
 import androidx.datastore.preferences.core.edit          // 导入 edit：写 DataStore
+import androidx.datastore.preferences.core.stringPreferencesKey  // 导入 stringPreferencesKey：字符串键
 import androidx.datastore.preferences.preferencesDataStore  // 导入 preferencesDataStore：创建 DataStore
 import dagger.hilt.android.qualifiers.ApplicationContext // 导入 ApplicationContext：应用级上下文限定符
 import kotlinx.coroutines.flow.Flow                      // 导入 Flow：响应式数据流
@@ -27,6 +28,7 @@ class AppPrefs @Inject constructor(                     // 构造函数注入
     private object Keys {                                // 键集合
         val FIRST_RUN_DONE = booleanPreferencesKey("first_run_done")  // 首次启动完成标记
         val DARK_MODE = booleanPreferencesKey("dark_mode")  // 暗色主题标记
+        val CUSTOM_STORAGE_PATH = stringPreferencesKey("custom_storage_path")  // 自定义存储根目录（R5）
     }
 
     /**
@@ -64,5 +66,25 @@ class AppPrefs @Inject constructor(                     // 构造函数注入
     /** 保存暗色主题开关。 */
     suspend fun setDarkMode(dark: Boolean) {             // 写入标记
         context.appPrefsDataStore.edit { it[Keys.DARK_MODE] = dark }  // 置值
+    }
+
+    // —— 自定义存储目录（R5）——
+
+    /** 自定义存储根目录流（null = 用默认应用私有目录）。 */
+    val customStoragePath: Flow<String?> =               // 读取流
+        context.appPrefsDataStore.data                   // DataStore 数据流
+            .map { it[Keys.CUSTOM_STORAGE_PATH] }        // 取路径（键不存在 → null）
+            .catch { emit(null) }                        // 读取异常 → null（回退默认目录）
+
+    /** 同步读取一次自定义存储根目录（StorageModule 启动时选实现用）。 */
+    suspend fun customStoragePath(): String? =           // 一次性读取
+        context.appPrefsDataStore.data.first()[Keys.CUSTOM_STORAGE_PATH]  // 取当前值
+
+    /** 保存自定义存储根目录（null 表示恢复默认应用私有目录）。 */
+    suspend fun setCustomStoragePath(path: String?) {    // 写入路径
+        context.appPrefsDataStore.edit { prefs ->        // 编辑 DataStore
+            if (path.isNullOrBlank()) prefs.remove(Keys.CUSTOM_STORAGE_PATH)  // 空则移除（回默认）
+            else prefs[Keys.CUSTOM_STORAGE_PATH] = path  // 写入路径
+        }
     }
 }

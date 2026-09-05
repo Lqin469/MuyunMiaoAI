@@ -134,8 +134,8 @@ class KnowledgeRepository @Inject constructor(           // 构造函数注入
         }
     }
 
-    /** 核心入库：分块 → 嵌入 → 幂等写库。 */
-    private suspend fun ingestText(docId: String, folderId: String, fileName: String, text: String) {  // 核心入库
+    /** 核心入库：分块 → 嵌入 → 幂等写库（public：供 ToolCallingBus 的 ingest_text 工具调用）。 */
+    suspend fun ingestText(docId: String, folderId: String, fileName: String, text: String) {  // 核心入库
         val chunks = Chunker.split(text)                  // 分块
         if (chunks.isEmpty()) return                       // 无有效块则跳过
         val vectors = embedder.embed(chunks)              // 批量嵌入（本地/云端）

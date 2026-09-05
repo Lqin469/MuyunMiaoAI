@@ -117,6 +117,7 @@ import com.memuo.feature.settings.ModelManageViewModel      // 导入模型管�
 import com.memuo.feature.settings.PermissionScreen          // 导入权限管理页
 import com.memuo.feature.settings.SettingsHomeScreen        // 导入设置主页
 import com.memuo.feature.settings.SettingsViewModel         // 导入设置 ViewModel
+import com.memuo.feature.settings.StorageLocationScreen     // 导入存储位置页（R5）
 import com.memuo.feature.settings.WallpaperScreen           // 导入自定义壁纸页
 import dagger.hilt.android.AndroidEntryPoint               // 导入 AndroidEntryPoint：Hilt 注入入口
 import kotlinx.coroutines.flow.first                          // 导入 first：取流首值
@@ -344,6 +345,7 @@ private fun RootNav(                                     // 导航主体
                     SettingsHomeScreen(
                         onBack = { nav.popBackStack() },  // 返回
                         onWallpaper = { nav.navigate("wallpaper") },  // 壁纸
+                        onStorage = { nav.navigate("storage") },    // 存储位置（R5）
                         onMigrate = { nav.navigate("migrate") },    // 迁移
                         onApi = { nav.navigate("api") },  // API
                         onPermission = { nav.navigate("perm") },   // 权限
@@ -353,6 +355,7 @@ private fun RootNav(                                     // 导航主体
                 composable("wallpaper") { WallpaperScreen(onBack = { nav.popBackStack() }) }  // 自定义壁纸
                 composable("migrate") { MigrateScreen(onBack = { nav.popBackStack() }) }      // 数据迁移
                 composable("perm") { PermissionScreen(onBack = { nav.popBackStack() }) }      // 权限管理
+                composable("storage") { StorageLocationScreen(onBack = { nav.popBackStack() }) }  // 存储位置（R5）
                 composable("api") { ApiManageScreen(onBack = { nav.popBackStack() }) }        // 云端 API 管理
                 composable("model") { ModelRoute(onBack = { nav.popBackStack() }) }           // 模型管理（含 SAF 选择器）
                 composable("local-model-select") { LocalModelSelectScreen(  // 本地模型选择（长按「本地」进入，M-035）

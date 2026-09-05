@@ -27,6 +27,7 @@ android {                                              // Android 构建配置�
 
 dependencies {                                         // 本模块依赖列表
     implementation(project(":core:search"))            // 依赖搜索模块（SearchService 检索能力）
+    implementation(project(":core:ingest"))            // 依赖入库模块（KnowledgeRepository 存入知识库工具）
 
     implementation(libs.hilt.android)                  // Hilt 运行时
     kapt(libs.hilt.compiler)                           // Hilt 注解处理器

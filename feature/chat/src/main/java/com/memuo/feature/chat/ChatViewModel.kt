@@ -9,6 +9,7 @@ import com.memuo.core.ai.engine.EngineRouter               // 导入引擎路由
 import com.memuo.core.ai.engine.EngineSettings             // 导入引擎设置（切换后状态流）
 import com.memuo.core.ai.memory.MemoryStore                // 导入记忆仓库（M5 每 N 轮提炼）
 import com.memuo.core.ai.tools.ToolCallingBus              // 导入 AI 工具总线（M7 search_file）
+import com.memuo.core.ingest.RagService                    // 导入 RAG（知识库检索，M-054 接入）
 import com.memuo.core.db.dao.ChatDao                       // 导入会话 DAO
 import com.memuo.core.db.entity.ChatMessage                // 导入消息实体
 import com.memuo.core.db.entity.Conversation               // 导入会话实体
@@ -34,6 +35,7 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
     private val cloudEngine: CloudChatEngine,            // 注入云端引擎（function calling 工具循环）
     private val memoryStore: MemoryStore,                // 注入记忆仓库（M5 提炼）
     private val toolBus: ToolCallingBus,                 // 注入工具总线（M7 文件检索工具）
+    private val rag: RagService,                         // 注入 RAG（知识库检索，M-054）
     private val engineSettings: EngineSettings,          // 注入引擎设置（云端/本地状态流）
     private val engineRouter: EngineRouter,              // 注入引擎路由器（切换校验）
 ) : ViewModel() {                                        // 继承 ViewModel
@@ -175,12 +177,13 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
     private suspend fun runStream(history: List<ChatMessage>, promptText: String) {  // 流式对话
         _streaming.value = true                          // 进入流式状态
         _streamText.value = ""                           // 清空流式文本
+        val kbContext = rag.retrieveContext(promptText)  // 检索知识库上下文（M-054，本地/云端都注入）
         if (engineSettings.engineType.first() == EngineType.CLOUD) {  // 云端引擎
-            runCloudWithTools(history)                   // function calling 工具循环
+            runCloudWithTools(history, kbContext)        // function calling 工具循环
             return                                      // 结束
         }
         val sb = StringBuilder()                         // 累积 AI 回复（本地流式）
-        engine.streamChat(history, system = toolBus.describeForLlm()).collect { event ->  // 流式收集（注入工具声明）
+        engine.streamChat(history, system = toolBus.describeForLlm() + kbContext).collect { event ->  // 流式收集（注入工具声明 + 知识库上下文）
             when (event) {                              // 分发事件
                 is ChatEvent.Delta -> {                  // 增量文本
                     sb.append(event.text)                // 累积
@@ -227,14 +230,14 @@ class ChatViewModel @Inject constructor(                 // 构造函数注入
     }
 
     /** 云端 function calling 工具循环：chatWithTools → 工具调用 → 执行 → 回传，直到最终文本。 */
-    private suspend fun runCloudWithTools(history: List<ChatMessage>) {  // function calling 循环
+    private suspend fun runCloudWithTools(history: List<ChatMessage>, kbContext: String) {  // function calling 循环
         val messages = history.toMutableList()            // 消息列表（追加 tool 结果）
         val tools = toolBus.describeAsTools()             // OpenAI tools 声明
         var finalText = ""                                // 最终回复
         var rounds = 0                                    // 工具轮数
         try {
             while (rounds < 4) {                          // 最多 4 轮工具调用
-                val result = cloudEngine.chatWithTools(messages, system = null, tools = tools)  // 一次 chat
+                val result = cloudEngine.chatWithTools(messages, system = kbContext.ifBlank { null }, tools = tools)  // 一次 chat（注入知识库上下文）
                 if (result == null) {                     // 未配置云端 API
                     finalText = "未配置云端 API，请到设置页填写 baseUrl/APIKey/模型"
                     break

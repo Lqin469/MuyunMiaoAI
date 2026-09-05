@@ -51,7 +51,10 @@ class TransferServer @Inject constructor(                // 构造函数注入
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)  // 服务作用域（IO）
         scope!!.launch {                                 // 监听协程
             runCatching {                                // 容错（端口占用等）
-                val socket = ServerSocket(LanProtocol.PORT)  // 绑定端口
+                val socket = ServerSocket().apply {      // 构造空 socket
+                    reuseAddress = true                  // 允许 TIME_WAIT 端口复用（防止 stop/start 二次绑定失败）
+                    bind(java.net.InetSocketAddress(LanProtocol.PORT))  // 绑定端口
+                }
                 serverSocket = socket                    // 记录
                 _running.value = true                    // 标记运行
                 while (listening) {                      // 接受循环

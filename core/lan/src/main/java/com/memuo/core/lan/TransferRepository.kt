@@ -38,6 +38,12 @@ class TransferRepository @Inject constructor(            // 构造函数注入
     /** 接收会话列表（透传服务端）。 */
     val receiveSessions: StateFlow<List<ReceiveSession>> = server.sessions  // 接收会话
 
+    /** 本机显示名（5 位随机，透传广播器）。 */
+    val localName: String get() = advertiser.localName   // 本机名
+
+    /** 自定义本机名（透传广播器，重新注册服务生效）。 */
+    fun setLocalName(name: String) = advertiser.setName(name)  // 设置本机名
+
     private val _sendSession = MutableStateFlow<SendSession?>(null)  // 当前发送会话（null = 空闲）
     val sendSession: StateFlow<SendSession?> = _sendSession.asStateFlow()  // 只读暴露
 
@@ -102,6 +108,9 @@ class TransferRepository @Inject constructor(            // 构造函数注入
                 )
             } catch (e: kotlinx.coroutines.CancellationException) {  // 主动取消（暂停）
                 _sendSession.value = _sendSession.value?.copy(state = SessionState.PAUSED)  // 暂停状态
+            } finally {
+                // 完成后置空 sendJob，允许再次发送（判断是否仍是当前协程，避免 resume 后误清新协程）
+                if (sendJob === coroutineContext[kotlinx.coroutines.Job]) sendJob = null
             }
         }
     }

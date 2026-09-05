@@ -34,6 +34,7 @@ dependencies {                                         // 本模块依赖列表
     implementation(project(":core:ai:engine"))         // 依赖引擎模块（ChatEngine/ChatEvent）
     implementation(project(":core:ai:memory"))         // 依赖记忆模块（每 N 轮提炼）
     implementation(project(":core:ai:tools"))          // 依赖工具总线（search_file 等 AI 工具）
+    implementation(project(":core:ingest"))            // 依赖入库模块（RagService 知识库检索）
     implementation(project(":core:ui"))                // 依赖共享 UI（主题/图标/Toast/位图加载，原型迁移新增）
     implementation(project(":core:storage"))           // 依赖存储模块（壁纸配置 WallpaperPrefs）
 

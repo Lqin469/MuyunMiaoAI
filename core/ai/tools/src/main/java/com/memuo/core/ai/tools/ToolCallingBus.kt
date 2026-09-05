@@ -1,5 +1,6 @@
 package com.memuo.core.ai.tools                            // 声明包名：AI 工具调用总线模块
 
+import com.memuo.core.ingest.KnowledgeRepository           // 导入知识库仓库（ingest_text 工具）
 import com.memuo.core.search.service.FileQuery              // 导入文件查询条件
 import com.memuo.core.search.service.SearchService          // 导入检索服务（AI 查文件用）
 import org.json.JSONArray                                  // 导入 JSONArray：构造结果 JSON
@@ -31,12 +32,14 @@ data class ToolDef(                                       // 工具定义数据�
 @Singleton                                               // 单例
 class ToolCallingBus @Inject constructor(                // 构造函数注入
     private val searchService: SearchService,            // 注入检索服务
+    private val knowledge: KnowledgeRepository,          // 注入知识库仓库（ingest_text 工具）
 ) {
     private val registry = LinkedHashMap<String, ToolDef>()  // 工具注册表（保序）
 
     init {                                                // 初始化：注册内置工具
         registerSearchFile()                              // 注册文件搜索工具
         registerTellLocation()                            // 注册位置说明工具
+        registerIngestText()                              // 注册存入知识库工具（M-054）
     }
 
     /** 注册一个工具（同名覆盖）。 */
@@ -144,6 +147,36 @@ class ToolCallingBus @Inject constructor(                // 构造函数注入
                         return@ToolDef """{"error":"path 不能为空"}"""  // 返回错误
                     }
                     """{"path":"$path","message":"文件位置：$path"}"""  // 返回位置说明
+                }
+            )
+        )
+    }
+
+    /** 注册 ingest_text：把文本存入知识库（用户说"记住/保存到知识库"时用）。 */
+    private fun registerIngestText() {                    // 注册存入知识库
+        register(                                         // 写入注册表
+            ToolDef(
+                name = "ingest_text",                     // 工具名
+                description = "把文本内容存入知识库（用户说'记住/保存到知识库/记下来'时用）。",  // 说明
+                parameters = JSONObject().apply {         // 参数 Schema
+                    put("type", "object")                 // 对象类型
+                    put("properties", JSONObject().apply {  // 属性
+                        put("content", JSONObject().put("type", "string").put("description", "要保存到知识库的文本内容"))  // 内容
+                    })
+                    put("required", JSONArray().put("content"))  // 必填：内容
+                },
+                executor = { argsJson ->                  // 执行器
+                    val content = runCatching { JSONObject(argsJson).optString("content") }.getOrDefault("")  // 解析内容
+                    if (content.isBlank()) {              // 空内容
+                        return@ToolDef """{"error":"content 不能为空"}"""  // 返回错误
+                    }
+                    knowledge.ingestText(                 // 入库
+                        docId = "ai_${System.currentTimeMillis()}",  // 文档 ID（AI 存入，时间戳唯一）
+                        folderId = "default",             // 默认知识库
+                        fileName = "AI 存入 ${System.currentTimeMillis()}",  // 来源名
+                        text = content,                   // 内容
+                    )
+                    """{"ok":true,"message":"已存入知识库"}"""  // 返回成功
                 }
             )
         )

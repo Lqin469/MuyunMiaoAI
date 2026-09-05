@@ -5,9 +5,15 @@ import android.net.nsd.NsdManager                         // 导入 NsdManager�
 import android.net.nsd.NsdServiceInfo                     // 导入 NsdServiceInfo：服务信息
 import android.net.wifi.WifiManager                        // 导入 WifiManager：多播锁（NSD 发现前提）
 import dagger.hilt.android.qualifiers.ApplicationContext  // 导入 ApplicationContext：应用级上下文
+import kotlinx.coroutines.CoroutineScope                   // 导入 CoroutineScope：自动停止作用域
+import kotlinx.coroutines.Dispatchers                      // 导入 Dispatchers：调度器
+import kotlinx.coroutines.Job                             // 导入 Job：定时任务
+import kotlinx.coroutines.SupervisorJob                    // 导入 SupervisorJob：子协程互不影响
+import kotlinx.coroutines.delay                            // 导入 delay：自动停止延时
 import kotlinx.coroutines.flow.MutableStateFlow           // 导入 MutableStateFlow：可变状态流
 import kotlinx.coroutines.flow.StateFlow                  // 导入 StateFlow：只读状态流
 import kotlinx.coroutines.flow.asStateFlow                // 导入 asStateFlow：转只读
+import kotlinx.coroutines.launch                           // 导入 launch：启动定时协程
 import javax.inject.Inject                                // 导入 Inject：构造函数注入
 import javax.inject.Singleton                             // 导入 Singleton：单例作用域
 
@@ -32,6 +38,8 @@ class LanScanner @Inject constructor(                    // 构造函数注入
 
     private var multicastLock: WifiManager.MulticastLock? = null  // 多播锁（部分设备必需）
     private val pending = mutableMapOf<String, NsdServiceInfo>()  // 待解析服务（serviceName → info，防重复）
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)  // 自动停止作用域
+    private var autoStopJob: Job? = null                  // 自动停止定时任务
 
     private val discoveryListener = object : NsdManager.DiscoveryListener {  // 发现监听器
         override fun onDiscoveryStarted(serviceType: String) { _scanning.value = true }  // 开始扫描
@@ -74,10 +82,16 @@ class LanScanner @Inject constructor(                    // 构造函数注入
         runCatching {                                    // 容错
             nsd.discoverServices(LanProtocol.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener)  // 发现服务
         }
+        autoStopJob?.cancel()                            // 取消旧定时器
+        autoStopJob = scope.launch {                     // 60 秒后自动停止（修正"扫描中"卡死）
+            delay(60_000)                                // 延时 60 秒
+            if (_scanning.value) stop()                  // 仍在扫描则自动停止
+        }
     }
 
     /** 停止扫描（释放多播锁）。 */
     fun stop() {                                         // 停止扫描
+        autoStopJob?.cancel(); autoStopJob = null        // 取消自动停止定时器
         runCatching { nsd.stopServiceDiscovery(discoveryListener) }  // 停止发现
         pending.clear()                                  // 清待解析
         _devices.value = emptyList()                     // 清列表

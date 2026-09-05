@@ -59,17 +59,18 @@ fun SwipeToReveal(                                       // 左滑删除容器
         modifier = modifier                             // 应用外部修饰
             .clip(RoundedCornerShape(14.dp)),           // 圆角 14（裁剪删除层直角）
     ) {
-        // 底部红色删除层（固定在右侧 88dp，卡片左移时露出）
+        // 底部红色删除层（matchParentSize 精确匹配卡片高度，修复 LazyColumn 里 fillMaxHeight 失效导致的高度不一致）
         Box(                                             // 删除层
             modifier = Modifier                         // 修饰
-                .align(Alignment.CenterEnd)             // 靠右对齐
-                .fillMaxHeight()                        // 占满高度
-                .width(88.dp)                           // 88dp 宽
-                .background(MuyunDanger)                // 危险红
+                .matchParentSize()                      // ✅ 匹配卡片完整尺寸（高度与卡片一致）
+                .background(MuyunDanger)                // 危险红（卡片左移后仅右侧 88dp 露出）
                 .clickable { onAction() },              // 点击触发删除
-            contentAlignment = Alignment.Center,         // 内容居中
+            contentAlignment = Alignment.CenterEnd,       // 内容靠右
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {  // 图标+文字纵向
+            Column(                                     // 图标+文字纵向
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.width(88.dp),        // 图标+文字区域限制在右侧 88dp
+            ) {
                 Icon(                                    // 垃圾桶图标
                     imageVector = AppIcons.Trash,        // 图标
                     contentDescription = actionLabel,    // 描述

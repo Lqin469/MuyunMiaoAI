@@ -50,6 +50,13 @@ class RagService @Inject constructor(                    // 构造函数注入
         )
     }
 
+    /** 检索知识库上下文（供对话流程注入 system prompt，跨知识库统一检索）。 */
+    suspend fun retrieveContext(question: String): String {  // 检索上下文
+        val hits = retriever.retrieveAll(question, topK = 8)  // 全库检索
+        if (hits.isEmpty()) return ""                       // 无命中返回空
+        return "\n【知识库参考】\n" + hits.withIndex().joinToString("\n") { (i, h) -> "[${i + 1}] ${h.chunk.text}" }  // 拼上下文
+    }
+
     companion object {                                    // 伴生对象：模板常量
         /** 带引用 + 记忆的 RAG 提示词模板。 */
         const val RAG_TEMPLATE = """
