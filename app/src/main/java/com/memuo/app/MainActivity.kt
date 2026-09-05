@@ -109,7 +109,6 @@ import com.memuo.feature.settings.KnowledgeDetailViewModel  // 导入知识库�
 import com.memuo.feature.settings.KnowledgeScreen           // 导入知识库页
 import com.memuo.feature.settings.KnowledgeViewModel        // 导入知识库 ViewModel
 import com.memuo.feature.settings.LanTransferDialog         // 导入局域网传输弹窗
-import com.memuo.feature.settings.LocalModelSelectScreen    // 导入本地模型选择页（M-035）
 import com.memuo.feature.settings.MemoryScreen              // 导入记忆库页
 import com.memuo.feature.settings.MigrateScreen             // 导入数据迁移页
 import com.memuo.feature.settings.ModelManageScreen         // 导入模型管理页
@@ -302,8 +301,8 @@ private fun RootNav(                                     // 导航主体
                         onLongPressEngine = {              // 长按进入配置（M-035）
                             if (engineType == EngineType.CLOUD) {  // 云端模式 → 云端配置
                                 nav.navigate("api") { launchSingleTop = true }  // 跳 API 管理
-                            } else {                       // 本地模式 → 本地模型选择
-                                nav.navigate("local-model-select") { launchSingleTop = true }  // 跳本地模型选择
+                            } else {                       // 本地模式 → 直达模型管理（导入模型）
+                                nav.navigate("model") { launchSingleTop = true }  // 直达模型管理页，避免中间「本地模型」页
                             }
                         },
                     )
@@ -358,10 +357,6 @@ private fun RootNav(                                     // 导航主体
                 composable("storage") { StorageLocationScreen(onBack = { nav.popBackStack() }) }  // 存储位置（R5）
                 composable("api") { ApiManageScreen(onBack = { nav.popBackStack() }) }        // 云端 API 管理
                 composable("model") { ModelRoute(onBack = { nav.popBackStack() }) }           // 模型管理（含 SAF 选择器）
-                composable("local-model-select") { LocalModelSelectScreen(  // 本地模型选择（长按「本地」进入，M-035）
-                    onBack = { nav.popBackStack() },      // 返回
-                    onImportModel = { nav.navigate("model") { launchSingleTop = true } },  // 导入新模型 → 模型管理
-                ) }
                 composable("memory") { MemoryScreen(onBack = { nav.popBackStack() }) }        // 记忆库
                 composable("knowledge") {                 // 知识库（文件夹列表）
                     val vm: KnowledgeViewModel = hiltViewModel()  // 知识库 ViewModel
