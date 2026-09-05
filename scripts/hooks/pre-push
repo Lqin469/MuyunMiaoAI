@@ -7,8 +7,8 @@
 # 说明：$1=远程名 $2=远程URL（本钩子不关心，仅做检查）
 # ============================================================
 
-# 定位项目根目录（钩子所在目录的上一级）
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 定位项目根目录（钩子位于 scripts/hooks/，需上溯两级到项目根）
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # 找到自查脚本
 CHECK_SCRIPT="$ROOT/scripts/check-secrets.sh"

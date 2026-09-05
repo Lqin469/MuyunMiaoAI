@@ -6,8 +6,8 @@
 #       推送结果写入 scripts/auto-commit-push.log，失败不阻断（下轮脚本会重试）。
 # ============================================================
 
-# 定位项目根目录（钩子所在目录的上一级）
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 定位项目根目录（钩子位于 scripts/hooks/，需上溯两级到项目根）
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || exit 0
 
 # 后台异步推送（nohup + & 避免阻塞 commit；日志追加到自动推送脚本日志）
